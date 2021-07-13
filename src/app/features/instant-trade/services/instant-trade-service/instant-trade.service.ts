@@ -22,7 +22,6 @@ import { InstantTradesPostApi } from 'src/app/core/services/backend/instant-trad
 import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import { TranslateService } from '@ngx-translate/core';
 import { UniSwapV3Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/uni-swap-v3.service';
-import { ProviderControllerData } from 'src/app/shared/components/provider-panel/provider-panel.component';
 import TransactionRevertedError from 'src/app/core/errors/models/common/transaction-reverted.error';
 import { SushiSwapPolygonService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-polygon-service/sushi-swap-polygon.service';
 import { SushiSwapEthService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-eth-service/sushi-swap-eth.service';
@@ -69,15 +68,18 @@ export class InstantTradeService {
   }
 
   public async calculateTrades(
-    providers: ProviderControllerData[]
+    itProviders: INSTANT_TRADES_PROVIDER[]
   ): Promise<PromiseSettledResult<InstantTrade>[]> {
     const { fromAmount, fromToken, toToken } =
       this.swapFormService.commonTrade.controls.input.value;
-    const providersDataPromises = providers.map(provider =>
-      this.blockchainsProviders[this.currentBlockchain][
-        provider.tradeProviderInfo.value
-      ].calculateTrade(fromAmount, fromToken, toToken)
+
+    const providers = itProviders.map(
+      itProvider => this.blockchainsProviders[this.currentBlockchain][itProvider]
     );
+    const providersDataPromises = providers.map(provider =>
+      provider.calculateTrade(fromAmount, fromToken, toToken)
+    );
+
     return Promise.allSettled(providersDataPromises);
   }
 
@@ -145,7 +147,7 @@ export class InstantTradeService {
     }
   }
 
-  public async postTrade(data: InstantTradesPostApi) {
+  private async postTrade(data: InstantTradesPostApi) {
     const web3Public = this.web3Public[this.currentBlockchain];
     await web3Public.getTransactionByHash(data.hash, 0, 60, 1000);
     timer(1000)
@@ -153,7 +155,7 @@ export class InstantTradeService {
       .subscribe();
   }
 
-  public updateTrade(hash: string, status: INSTANT_TRADES_TRADE_STATUS) {
+  private updateTrade(hash: string, status: INSTANT_TRADES_TRADE_STATUS) {
     return this.instantTradesApiService.patchTrade(hash, status).subscribe({
       // tslint:disable-next-line:no-console
       error: err => console.debug('IT patch request is failed', err)
@@ -178,19 +180,6 @@ export class InstantTradeService {
         [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapPolygonService
       }
     });
-  }
-
-  public needApprove(): Observable<boolean> {
-    const { fromToken, fromAmount } = this.swapFormService.commonTrade.controls.input.value;
-    const providerApproveData = Object.values(
-      this.blockchainsProviders[this.currentBlockchain]
-    ).map((provider: ItProvider) => provider.getAllowance(fromToken.address));
-
-    return forkJoin(providerApproveData).pipe(
-      map((approveArray: BigNumber[]) => {
-        return approveArray.some(el => fromAmount.gt(el));
-      })
-    );
   }
 
   public async approve(provider: INSTANT_TRADES_PROVIDER, trade: InstantTrade): Promise<void> {
@@ -222,9 +211,12 @@ export class InstantTradeService {
     }
   }
 
-  public getApprove(): Observable<boolean[]> | never {
+  public getApprove(itProviders: INSTANT_TRADES_PROVIDER[]): Observable<boolean[]> | never {
     const { fromToken, fromAmount } = this.swapFormService.commonTrade.controls.input.value;
-    const providers = Object.values(this.blockchainsProviders[this.currentBlockchain]);
+
+    const providers = itProviders.map(
+      itProvider => this.blockchainsProviders[this.currentBlockchain][itProvider]
+    );
     const providerApproveData = providers.map((provider: ItProvider) =>
       provider.getAllowance(fromToken.address)
     );

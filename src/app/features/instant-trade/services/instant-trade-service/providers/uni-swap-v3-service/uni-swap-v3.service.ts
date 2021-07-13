@@ -16,7 +16,7 @@ import {
 } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/uni-swap-v3-constants';
 import { Web3PrivateService } from 'src/app/core/services/blockchain/web3-private-service/web3-private.service';
 import InsufficientLiquidityError from 'src/app/core/errors/models/instant-trade/insufficient-liquidity.error';
-import { Gas } from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap-types';
+import { Gas } from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap.types';
 import {
   ItSettingsForm,
   SettingsService
@@ -79,7 +79,7 @@ export class UniSwapV3Service implements ItProvider {
     };
   }
 
-  public needApprove(tokenAddress: string): Observable<BigNumber> {
+  public getAllowance(tokenAddress: string): Observable<BigNumber> {
     if (this.web3Public.isNativeAddress(tokenAddress)) {
       return of(new BigNumber(Infinity));
     }
@@ -376,6 +376,12 @@ export class UniSwapV3Service implements ItProvider {
     walletAddress: string,
     deadline: number
   ): Promise<BigNumber> {
+    if (!walletAddress) {
+      return swapEstimatedGas[route.poolsPath.length - 1].plus(
+        isEth.to ? WETHtoETHEstimatedGas : 0
+      );
+    }
+
     const allowance = isEth.from
       ? new BigNumber(Infinity)
       : await this.web3Public.getAllowance(
@@ -386,7 +392,7 @@ export class UniSwapV3Service implements ItProvider {
     const balance = isEth.from
       ? await this.web3Public.getBalance(walletAddress, { inWei: true })
       : await this.web3Public.getTokenBalance(walletAddress, route.initialTokenAddress);
-    if (!walletAddress || !allowance.gte(fromAmountAbsolute) || !balance.gte(fromAmountAbsolute)) {
+    if (!allowance.gte(fromAmountAbsolute) || !balance.gte(fromAmountAbsolute)) {
       return swapEstimatedGas[route.poolsPath.length - 1].plus(
         isEth.to ? WETHtoETHEstimatedGas : 0
       );
