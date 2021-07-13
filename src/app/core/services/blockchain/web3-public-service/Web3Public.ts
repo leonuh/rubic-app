@@ -6,6 +6,8 @@ import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAM
 import { BlockchainTokenExtended } from 'src/app/shared/models/tokens/BlockchainTokenExtended';
 import { AbiItem } from 'web3-utils';
 import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE_TOKEN_ADDRESS';
+import InsufficientFundsError from 'src/app/core/errors/models/instant-trade/InsufficientFundsError';
+import { BIG_NUMBER_FORMAT } from 'src/app/shared/constants/formats/BIG_NUMBER_FORMAT';
 import ERC20_TOKEN_ABI from '../constants/erc-20-abi';
 import MULTICALL_ABI from '../constants/multicall-abi';
 import { Call } from '../types/call';
@@ -69,6 +71,10 @@ export class Web3Public {
 
     const balance = await contract.methods.balanceOf(address).call();
     return new BigNumber(balance);
+  }
+
+  public getContract(address: string, abi: AbiItem[]) {
+    return new this.web3.eth.Contract(abi, address);
   }
 
   /**
@@ -318,5 +324,38 @@ export class Web3Public {
     );
     const result = await contract.methods.aggregate(calls).call();
     return result.returnData;
+  }
+
+  public async checkBalance(
+    token: { address: string; symbol: string; decimals: number },
+    userAddress: string,
+    amount: BigNumber | string
+  ): Promise<void> {
+    amount = new BigNumber(amount);
+    const amountAbsolute = amount.multipliedBy(10 ** token.decimals).toFixed(0);
+
+    if (this.isNativeAddress(token.address)) {
+      const balance = await this.getBalance(userAddress, {
+        inWei: true
+      });
+      if (balance.lt(amountAbsolute)) {
+        const formattedBalance = this.weiToEth(balance);
+        throw new InsufficientFundsError(
+          token.symbol,
+          formattedBalance,
+          amount.toFormat(BIG_NUMBER_FORMAT)
+        );
+      }
+    } else {
+      const tokensBalance = await this.getTokenBalance(userAddress, token.address);
+      if (tokensBalance.lt(amountAbsolute)) {
+        const formattedTokensBalance = tokensBalance.div(10 ** token.decimals).toString();
+        throw new InsufficientFundsError(
+          token.symbol,
+          formattedTokensBalance,
+          amount.toFormat(BIG_NUMBER_FORMAT)
+        );
+      }
+    }
   }
 }

@@ -5,7 +5,7 @@ import { SwapFormService } from 'src/app/features/swaps/services/swaps-form-serv
 import BigNumber from 'bignumber.js';
 import { TuiNotification, TuiNotificationsService } from '@taiga-ui/core';
 import { forkJoin, Observable, Subscription, timer } from 'rxjs';
-import { UniSwapService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-service/uni-swap.service';
+import { UniSwapV2Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v2-service/uni-swap-v2.service';
 import { ErrorsService } from 'src/app/core/errors/errors.service';
 import { map, switchMap } from 'rxjs/operators';
 import { INSTANT_TRADES_TRADE_STATUS } from 'src/app/features/swaps/models/INSTANT_TRADES_TRADE_STATUS';
@@ -21,6 +21,8 @@ import { INSTANT_TRADES_PROVIDER } from 'src/app/shared/models/instant-trade/INS
 import { InstantTradesPostApi } from 'src/app/core/services/backend/instant-trades-api/types/InstantTradesPostApi';
 import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import { TranslateService } from '@ngx-translate/core';
+import { UniSwapV3Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/uni-swap-v3.service';
+import { ProviderControllerData } from 'src/app/shared/components/provider-panel/provider-panel.component';
 
 @Injectable({
   providedIn: 'root'
@@ -35,7 +37,8 @@ export class InstantTradeService {
   constructor(
     // Providers start
     private readonly oneInchEthService: OneInchEthService,
-    private readonly uniswapService: UniSwapService,
+    private readonly uniSwapV2Service: UniSwapV2Service,
+    private readonly uniSwapV3Service: UniSwapV3Service,
     private readonly oneInchPolygonService: OneInchPolService,
     private readonly pancakeSwapService: PancakeSwapService,
     private readonly quickSwapService: QuickSwapService,
@@ -60,12 +63,16 @@ export class InstantTradeService {
     });
   }
 
-  public async calculateTrades(): Promise<PromiseSettledResult<InstantTrade>[]> {
+  public async calculateTrades(
+    providers: ProviderControllerData[]
+  ): Promise<PromiseSettledResult<InstantTrade>[]> {
     const { fromAmount, fromToken, toToken } =
       this.swapFormService.commonTrade.controls.input.value;
-    const providersDataPromises = Object.values(
-      this.blockchainsProviders[this.currentBlockchain]
-    ).map(async (provider: ItProvider) => provider.calculateTrade(fromAmount, fromToken, toToken));
+    const providersDataPromises = providers.map(provider =>
+      this.blockchainsProviders[this.currentBlockchain][
+        provider.tradeProviderInfo.value
+      ].calculateTrade(fromAmount, fromToken, toToken)
+    );
     return Promise.allSettled(providersDataPromises);
   }
 
@@ -147,7 +154,8 @@ export class InstantTradeService {
     this.swapFormService.setItProviders({
       [BLOCKCHAIN_NAME.ETHEREUM]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchEthService,
-        [INSTANT_TRADES_PROVIDER.UNISWAP]: this.uniswapService
+        [INSTANT_TRADES_PROVIDER.UNISWAP_V2]: this.uniSwapV2Service,
+        [INSTANT_TRADES_PROVIDER.UNISWAP_V3]: this.uniSwapV3Service
       },
       [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchBscService,

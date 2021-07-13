@@ -25,7 +25,7 @@ import {
   ItSettingsForm,
   SettingsService
 } from 'src/app/features/swaps/services/settings-service/settings.service';
-import { CommonUniswapService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/common-uniswap/common-uniswap.service';
+import { CommonUniswapV2Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/common-uniswap-v2/common-uniswap-v2.service';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -47,7 +47,7 @@ export class PancakeSwapService {
     private readonly useTestingModeService: UseTestingModeService,
     private readonly providerConnectorService: ProviderConnectorService,
     private readonly settingsService: SettingsService,
-    private readonly commonUniswap: CommonUniswapService
+    private readonly commonUniswapV2: CommonUniswapV2Service
   ) {
     useTestingModeService.isTestingMode.subscribe(value => {
       if (value) {
@@ -71,7 +71,7 @@ export class PancakeSwapService {
   }
 
   public needApprove(tokenAddress: string): Observable<BigNumber> {
-    return this.commonUniswap.needApprove(tokenAddress, this.web3Public);
+    return this.commonUniswapV2.needApprove(tokenAddress, this.web3Public);
   }
 
   public async approve(
@@ -80,8 +80,8 @@ export class PancakeSwapService {
       onTransactionHash?: (hash: string) => void;
     }
   ): Promise<void> {
-    await this.commonUniswap.checkSettings(this.blockchain);
-    return this.commonUniswap.approve(tokenAddress, options);
+    this.commonUniswapV2.checkSettings(this.blockchain);
+    return this.commonUniswapV2.approve(tokenAddress, options);
   }
 
   public async calculateTrade(
@@ -108,7 +108,7 @@ export class PancakeSwapService {
 
     const amountIn = fromAmount.multipliedBy(10 ** fromTokenClone.decimals).toFixed(0);
 
-    const { route, gasData } = await this.commonUniswap.getToAmountAndPath(
+    const { route, gasData } = await this.commonUniswapV2.getToAmountAndPath(
       this.settings.rubicOptimisation,
       amountIn,
       fromTokenClone,
@@ -149,8 +149,8 @@ export class PancakeSwapService {
       onApprove?: (hash: string) => void;
     } = {}
   ): Promise<TransactionReceipt> {
-    await this.commonUniswap.checkSettings(this.blockchain);
-    await this.commonUniswap.checkBalance(trade, this.web3Public);
+    this.commonUniswapV2.checkSettings(this.blockchain);
+    await this.commonUniswapV2.checkBalance(trade, this.web3Public);
 
     const amountIn = trade.from.amount.multipliedBy(10 ** trade.from.token.decimals).toFixed(0);
 
@@ -165,7 +165,7 @@ export class PancakeSwapService {
     const uniSwapTrade: UniSwapTrade = { amountIn, amountOutMin, path, to, deadline };
 
     if (this.web3Public.isNativeAddress(trade.from.token.address)) {
-      return this.commonUniswap.createEthToTokensTrade(
+      return this.commonUniswapV2.createEthToTokensTrade(
         uniSwapTrade,
         options,
         uniSwapContracts.address,
@@ -174,7 +174,7 @@ export class PancakeSwapService {
     }
 
     if (this.web3Public.isNativeAddress(trade.to.token.address)) {
-      return this.commonUniswap.createTokensToEthTrade(
+      return this.commonUniswapV2.createTokensToEthTrade(
         uniSwapTrade,
         options,
         uniSwapContracts.address,
@@ -182,7 +182,7 @@ export class PancakeSwapService {
       );
     }
 
-    return this.commonUniswap.createTokensToTokensTrade(
+    return this.commonUniswapV2.createTokensToTokensTrade(
       uniSwapTrade,
       options,
       uniSwapContracts.address,

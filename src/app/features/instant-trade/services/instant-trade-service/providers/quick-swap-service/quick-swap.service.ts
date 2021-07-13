@@ -26,7 +26,7 @@ import {
   SettingsService
 } from 'src/app/features/swaps/services/settings-service/settings.service';
 import { Observable } from 'rxjs';
-import { CommonUniswapService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/common-uniswap/common-uniswap.service';
+import { CommonUniswapV2Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/common-uniswap-v2/common-uniswap-v2.service';
 import { ItProvider } from 'src/app/features/instant-trade/services/instant-trade-service/models/it-provider';
 
 @Injectable({
@@ -48,7 +48,7 @@ export class QuickSwapService implements ItProvider {
     private readonly useTestingModeService: UseTestingModeService,
     private readonly providerConnectorService: ProviderConnectorService,
     private readonly settingsService: SettingsService,
-    private readonly commonUniswap: CommonUniswapService
+    private readonly commonUniswap: CommonUniswapV2Service
   ) {
     useTestingModeService.isTestingMode.subscribe(value => {
       if (value) {
@@ -81,7 +81,7 @@ export class QuickSwapService implements ItProvider {
       onTransactionHash?: (hash: string) => void;
     }
   ): Promise<void> {
-    await this.commonUniswap.checkSettings(this.blockchain);
+    this.commonUniswap.checkSettings(this.blockchain);
     return this.commonUniswap.approve(tokenAddress, options);
   }
 
@@ -150,7 +150,7 @@ export class QuickSwapService implements ItProvider {
       onApprove?: (hash: string) => void;
     } = {}
   ): Promise<TransactionReceipt> {
-    await this.commonUniswap.checkSettings(this.blockchain);
+    this.commonUniswap.checkSettings(this.blockchain);
     await this.commonUniswap.checkBalance(trade, this.web3Public);
 
     const amountIn = trade.from.amount.multipliedBy(10 ** trade.from.token.decimals).toFixed(0);

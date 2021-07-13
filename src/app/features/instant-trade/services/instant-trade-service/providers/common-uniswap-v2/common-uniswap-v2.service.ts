@@ -11,13 +11,7 @@ import { TransactionReceipt } from 'web3-eth';
 import InstantTradeToken from 'src/app/features/instant-trade/models/InstantTradeToken';
 import InsufficientLiquidityError from 'src/app/core/errors/models/instant-trade/insufficient-liquidity.error';
 import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
-import { WalletError } from 'src/app/core/errors/models/provider/WalletError';
-import { AccountError } from 'src/app/core/errors/models/provider/AccountError';
-import { WALLET_NAME } from 'src/app/core/header/components/header/components/wallets-modal/models/providers';
-import { NetworkError } from 'src/app/core/errors/models/provider/NetworkError';
-import { NotSupportedNetworkError } from 'src/app/core/errors/models/provider/NotSupportedNetwork';
 import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
-import InsufficientFundsError from 'src/app/core/errors/models/instant-trade/InsufficientFundsError';
 import { Web3Public } from 'src/app/core/services/blockchain/web3-public-service/Web3Public';
 import { Web3PrivateService } from 'src/app/core/services/blockchain/web3-private-service/web3-private.service';
 import { ProviderConnectorService } from 'src/app/core/services/blockchain/provider-connector/provider-connector.service';
@@ -30,7 +24,7 @@ import { uniSwapContracts } from 'src/app/features/instant-trade/services/instan
 @Injectable({
   providedIn: 'root'
 })
-export class CommonUniswapService {
+export class CommonUniswapV2Service {
   constructor(
     private readonly web3Private: Web3PrivateService,
     public providerConnectorService: ProviderConnectorService,
@@ -56,11 +50,10 @@ export class CommonUniswapService {
       onTransactionHash?: (hash: string) => void;
     }
   ): Promise<void> {
-    const uintInfinity = new BigNumber(2).pow(256).minus(1);
     await this.web3Private.approveTokens(
       tokenAddress,
       uniSwapContracts.address,
-      uintInfinity,
+      'infinity',
       options
     );
   }
@@ -436,54 +429,15 @@ export class CommonUniswapService {
     return results.sort((a, b) => (b.profit.minus(a.profit).gt(0) ? 1 : -1))[0];
   }
 
-  public checkSettings(selectedBlockchain: BLOCKCHAIN_NAME) {
-    if (!this.providerConnectorService.isProviderActive) {
-      throw new WalletError();
-    }
-    if (!this.providerConnectorService.address) {
-      throw new AccountError();
-    }
-    if (this.providerConnectorService.networkName !== selectedBlockchain) {
-      if (this.providerConnectorService.networkName !== `${selectedBlockchain}_TESTNET`) {
-        if (this.providerConnectorService.providerName === WALLET_NAME.METAMASK) {
-          throw new NetworkError(selectedBlockchain);
-        } else {
-          throw new NotSupportedNetworkError(selectedBlockchain);
-        }
-      }
-    }
+  public checkSettings(selectedBlockchain: BLOCKCHAIN_NAME): void {
+    this.providerConnectorService.checkSettings(selectedBlockchain);
   }
 
   async checkBalance(trade: InstantTrade, web3Public: Web3Public): Promise<void> {
-    const amountIn = trade.from.amount.multipliedBy(10 ** trade.from.token.decimals).toFixed(0);
-
-    if (web3Public.isNativeAddress(trade.from.token.address)) {
-      const balance = await web3Public.getBalance(this.providerConnectorService.address, {
-        inWei: true
-      });
-      if (balance.lt(amountIn)) {
-        const formattedBalance = web3Public.weiToEth(balance);
-        throw new InsufficientFundsError(
-          trade.from.token.symbol,
-          formattedBalance,
-          trade.from.amount.toString()
-        );
-      }
-    } else {
-      const tokensBalance = await web3Public.getTokenBalance(
-        this.providerConnectorService.address,
-        trade.from.token.address
-      );
-      if (tokensBalance.lt(amountIn)) {
-        const formattedTokensBalance = tokensBalance
-          .div(10 ** trade.from.token.decimals)
-          .toString();
-        throw new InsufficientFundsError(
-          trade.from.token.symbol,
-          formattedTokensBalance,
-          trade.from.amount.toString()
-        );
-      }
-    }
+    await web3Public.checkBalance(
+      trade.from.token,
+      this.providerConnectorService.address,
+      trade.from.amount
+    );
   }
 }

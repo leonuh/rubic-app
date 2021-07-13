@@ -24,6 +24,7 @@ import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE
 import { Web3PublicService } from 'src/app/core/services/blockchain/web3-public-service/web3-public.service';
 import { TokensService } from 'src/app/core/services/tokens/tokens.service';
 import { NotSupportedItNetwork } from 'src/app/core/errors/models/instant-trade/not-supported-it-network';
+import { debounceTime } from 'rxjs/operators';
 
 interface CalculationResult {
   status: 'fulfilled' | 'rejected';
@@ -96,8 +97,9 @@ export class InstantTradeBottomFormComponent implements OnInit, OnDestroy {
     this.initiateProviders(this.currentBlockchain);
     this.conditionalCalculate(formValue);
 
-    this.formChangesSubscription$ =
-      this.swapFormService.commonTrade.controls.input.valueChanges.subscribe(form => {
+    this.formChangesSubscription$ = this.swapFormService.commonTrade.controls.input.valueChanges
+      .pipe(debounceTime(500))
+      .subscribe(form => {
         this.fromAmount = form.fromAmount;
         this.cdr.detectChanges();
 
@@ -142,7 +144,9 @@ export class InstantTradeBottomFormComponent implements OnInit, OnDestroy {
     const approveData = this.authService.user?.address
       ? await this.instantTradeService.getApprove().toPromise()
       : new Array(this.providerControllers.length).fill(null);
-    const tradeData = (await this.instantTradeService.calculateTrades()) as CalculationResult[];
+    const tradeData = (await this.instantTradeService.calculateTrades(
+      this.providerControllers
+    )) as CalculationResult[];
 
     const bestProviderIndex = this.calculateBestRate(tradeData.map(el => el.value));
     this.setupControllers(tradeData, approveData, bestProviderIndex);

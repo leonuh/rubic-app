@@ -5,6 +5,11 @@ import { IBlockchain } from 'src/app/shared/models/blockchain/IBlockchain';
 import Web3 from 'web3';
 import { ErrorsService } from 'src/app/core/errors/errors.service';
 import { Token } from 'src/app/shared/models/tokens/Token';
+import { WalletError } from 'src/app/core/errors/models/provider/WalletError';
+import { AccountError } from 'src/app/core/errors/models/provider/AccountError';
+import { NetworkError } from 'src/app/core/errors/models/provider/NetworkError';
+import { NotSupportedNetworkError } from 'src/app/core/errors/models/provider/NotSupportedNetwork';
+import { UseTestingModeService } from 'src/app/core/services/use-testing-mode/use-testing-mode.service';
 import { MetamaskProvider } from '../private-provider/metamask-provider/metamask-provider';
 import { WalletConnectProvider } from '../private-provider/wallet-connect/wallet-connect-provider';
 import { WalletLinkProvider } from '../private-provider/wallet-link/wallet-link-provider';
@@ -64,7 +69,8 @@ export class ProviderConnectorService {
 
   constructor(
     private readonly storage: StoreService,
-    private readonly errorService: ErrorsService
+    private readonly errorService: ErrorsService,
+    private readonly useTestingModeService: UseTestingModeService
   ) {
     this.web3 = new Web3();
     this.$networkChangeSubject = new BehaviorSubject<IBlockchain>(null);
@@ -153,5 +159,26 @@ export class ProviderConnectorService {
       this.errorService
     ) as PrivateProvider;
     this.providerName = WALLET_NAME.METAMASK;
+  }
+
+  public checkSettings(selectedBlockchain: BLOCKCHAIN_NAME): void {
+    if (!this.isProviderActive) {
+      throw new WalletError();
+    }
+    if (!this.address) {
+      throw new AccountError();
+    }
+
+    const isTestingMode = this.useTestingModeService.isTestingMode.getValue();
+    if (
+      this.networkName !== selectedBlockchain ||
+      (isTestingMode && this.networkName !== `${selectedBlockchain}_TESTNET`)
+    ) {
+      if (this.providerName === WALLET_NAME.METAMASK) {
+        throw new NetworkError(selectedBlockchain);
+      } else {
+        throw new NotSupportedNetworkError(selectedBlockchain);
+      }
+    }
   }
 }
