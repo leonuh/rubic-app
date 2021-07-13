@@ -39,6 +39,18 @@ export const INSTANT_TRADE_PROVIDERS = {
       isSelected: false,
       isCollapsed: false,
       needApprove: null
+    },
+    {
+      trade: null,
+      tradeState: INSTANT_TRADES_STATUS.CALCULATION,
+      tradeProviderInfo: {
+        label: 'Sushiswap',
+        value: INSTANT_TRADES_PROVIDER.SUSHISWAP
+      },
+      isBestRate: false,
+      isSelected: false,
+      isCollapsed: false,
+      needApprove: null
     }
   ],
   [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: [
@@ -86,6 +98,18 @@ export const INSTANT_TRADE_PROVIDERS = {
       tradeProviderInfo: {
         label: 'Quickswap',
         value: INSTANT_TRADES_PROVIDER.QUICKSWAP
+      },
+      isBestRate: false,
+      isSelected: false,
+      isCollapsed: false,
+      needApprove: null
+    },
+    {
+      trade: null,
+      tradeState: INSTANT_TRADES_STATUS.CALCULATION,
+      tradeProviderInfo: {
+        label: 'Sushiswap',
+        value: INSTANT_TRADES_PROVIDER.SUSHISWAP
       },
       isBestRate: false,
       isSelected: false,

@@ -18,7 +18,7 @@ import {
   WETH
 } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v2-service/uni-swap-v2-constants';
 import { TransactionReceipt } from 'web3-eth';
-import { UniSwapTrade } from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap-types';
+import { UniSwapTrade } from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap.types';
 import { Web3Public } from 'src/app/core/services/blockchain/web3-public-service/Web3Public';
 import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import {
@@ -45,8 +45,6 @@ export class UniSwapV2Service implements ItProvider {
 
   private routingProviders: string[];
 
-  private isTestingMode: boolean;
-
   private settings: ItSettingsForm;
 
   private timeCoefficient = 60;
@@ -68,7 +66,6 @@ export class UniSwapV2Service implements ItProvider {
     this.routingProviders = routingProviders.addresses;
     useTestingModeService.isTestingMode.subscribe(value => {
       if (value) {
-        this.isTestingMode = true;
         this.web3Public = w3Public[BLOCKCHAIN_NAME.ETHEREUM_TESTNET];
         this.WETHAddress = WETH.testnetAddress;
         this.uniswapContractAddress = uniSwapContracts.testnetAddress;
@@ -152,8 +149,12 @@ export class UniSwapV2Service implements ItProvider {
     };
   }
 
-  public needApprove(tokenAddress: string): Observable<BigNumber> {
-    return this.commonUniswapV2.needApprove(tokenAddress, this.web3Public);
+  public getAllowance(tokenAddress: string): Observable<BigNumber> {
+    return this.commonUniswapV2.getAllowance(
+      tokenAddress,
+      this.uniswapContractAddress,
+      this.web3Public
+    );
   }
 
   public async approve(
@@ -163,7 +164,7 @@ export class UniSwapV2Service implements ItProvider {
     }
   ): Promise<void> {
     this.commonUniswapV2.checkSettings(this.blockchain);
-    return this.commonUniswapV2.approve(tokenAddress, options);
+    return this.commonUniswapV2.approve(tokenAddress, this.uniswapContractAddress, options);
   }
 
   public async createTrade(

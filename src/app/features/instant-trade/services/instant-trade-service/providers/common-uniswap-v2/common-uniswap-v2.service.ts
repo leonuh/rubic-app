@@ -6,7 +6,7 @@ import {
   SWAP_METHOD,
   UniswapRoute,
   UniSwapTrade
-} from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap-types';
+} from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap.types';
 import { TransactionReceipt } from 'web3-eth';
 import InstantTradeToken from 'src/app/features/instant-trade/models/InstantTradeToken';
 import InsufficientLiquidityError from 'src/app/core/errors/models/instant-trade/insufficient-liquidity.error';
@@ -19,7 +19,7 @@ import { CoingeckoApiService } from 'src/app/core/services/external-api/coingeck
 import { ItSettingsForm } from 'src/app/features/swaps/services/settings-service/settings.service';
 import { AbiItem } from 'web3-utils';
 import { from, Observable, of } from 'rxjs';
-import { uniSwapContracts } from 'src/app/features/instant-trade/services/instant-trade-service/providers/quick-swap-service/quick-swap-constants';
+import { TransactionOptions } from 'src/app/shared/models/blockchain/transaction-options';
 
 @Injectable({
   providedIn: 'root'
@@ -31,31 +31,25 @@ export class CommonUniswapV2Service {
     private readonly coingeckoApiService: CoingeckoApiService
   ) {}
 
-  public needApprove(tokenAddress: string, web3Public: Web3Public): Observable<BigNumber> {
+  public getAllowance(
+    tokenAddress: string,
+    contractAddress: string,
+    web3Public: Web3Public
+  ): Observable<BigNumber> {
     if (web3Public.isNativeAddress(tokenAddress)) {
       return of(new BigNumber(Infinity));
     }
     return from(
-      web3Public.getAllowance(
-        tokenAddress,
-        this.providerConnectorService.address,
-        uniSwapContracts.address
-      )
+      web3Public.getAllowance(tokenAddress, this.providerConnectorService.address, contractAddress)
     );
   }
 
   public async approve(
     tokenAddress: string,
-    options: {
-      onTransactionHash?: (hash: string) => void;
-    }
+    contractAddress: string,
+    options: TransactionOptions
   ): Promise<void> {
-    await this.web3Private.approveTokens(
-      tokenAddress,
-      uniSwapContracts.address,
-      'infinity',
-      options
-    );
+    await this.web3Private.approveTokens(tokenAddress, contractAddress, 'infinity', options);
   }
 
   public async calculateTokensToTokensGasLimit(

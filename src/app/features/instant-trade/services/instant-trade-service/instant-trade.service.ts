@@ -23,6 +23,9 @@ import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import { TranslateService } from '@ngx-translate/core';
 import { UniSwapV3Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/uni-swap-v3.service';
 import { ProviderControllerData } from 'src/app/shared/components/provider-panel/provider-panel.component';
+import TransactionRevertedError from 'src/app/core/errors/models/common/transaction-reverted.error';
+import { SushiSwapPolygonService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-polygon-service/sushi-swap-polygon.service';
+import { SushiSwapEthService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-eth-service/sushi-swap-eth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -43,6 +46,8 @@ export class InstantTradeService {
     private readonly pancakeSwapService: PancakeSwapService,
     private readonly quickSwapService: QuickSwapService,
     private readonly oneInchBscService: OneInchBscService,
+    private readonly sushiSwapEthService: SushiSwapEthService,
+    private readonly sushiSwapPolygonService: SushiSwapPolygonService,
     // Providers end
     private readonly instantTradesApiService: InstantTradesApiService,
     private readonly errorService: ErrorsService,
@@ -128,10 +133,15 @@ export class InstantTradeService {
         txHash: receipt.transactionHash
       });
     } catch (err) {
+      if (err instanceof TransactionRevertedError) {
+        console.error(err);
+      } else {
+        this.errorService.catch$(err);
+      }
+    } finally {
       if (this.modalShowing) {
         this.modalShowing.unsubscribe();
       }
-      this.errorService.catch$(err);
     }
   }
 
@@ -155,7 +165,8 @@ export class InstantTradeService {
       [BLOCKCHAIN_NAME.ETHEREUM]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchEthService,
         [INSTANT_TRADES_PROVIDER.UNISWAP_V2]: this.uniSwapV2Service,
-        [INSTANT_TRADES_PROVIDER.UNISWAP_V3]: this.uniSwapV3Service
+        [INSTANT_TRADES_PROVIDER.UNISWAP_V3]: this.uniSwapV3Service,
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapEthService
       },
       [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchBscService,
@@ -163,7 +174,8 @@ export class InstantTradeService {
       },
       [BLOCKCHAIN_NAME.POLYGON]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchPolygonService,
-        [INSTANT_TRADES_PROVIDER.QUICKSWAP]: this.quickSwapService
+        [INSTANT_TRADES_PROVIDER.QUICKSWAP]: this.quickSwapService,
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapPolygonService
       }
     });
   }
@@ -172,7 +184,7 @@ export class InstantTradeService {
     const { fromToken, fromAmount } = this.swapFormService.commonTrade.controls.input.value;
     const providerApproveData = Object.values(
       this.blockchainsProviders[this.currentBlockchain]
-    ).map((provider: ItProvider) => provider.needApprove(fromToken.address));
+    ).map((provider: ItProvider) => provider.getAllowance(fromToken.address));
 
     return forkJoin(providerApproveData).pipe(
       map((approveArray: BigNumber[]) => {
@@ -206,25 +218,21 @@ export class InstantTradeService {
       if (this.modalShowing) {
         this.modalShowing.unsubscribe();
       }
-      this.errorService.throw$(err);
+      throw err;
     }
   }
 
   public getApprove(): Observable<boolean[]> | never {
-    try {
-      const { fromToken, fromAmount } = this.swapFormService.commonTrade.controls.input.value;
-      const providers = Object.values(this.blockchainsProviders[this.currentBlockchain]);
-      const providerApproveData = providers.map((provider: ItProvider) =>
-        provider.needApprove(fromToken.address)
-      );
+    const { fromToken, fromAmount } = this.swapFormService.commonTrade.controls.input.value;
+    const providers = Object.values(this.blockchainsProviders[this.currentBlockchain]);
+    const providerApproveData = providers.map((provider: ItProvider) =>
+      provider.getAllowance(fromToken.address)
+    );
 
-      return forkJoin(providerApproveData).pipe(
-        map((approveArray: BigNumber[]) => {
-          return approveArray.map(el => fromAmount.gt(el));
-        })
-      );
-    } catch (err) {
-      return this.errorService.throw$(err);
-    }
+    return forkJoin(providerApproveData).pipe(
+      map((approveArray: BigNumber[]) => {
+        return approveArray.map(el => fromAmount.gt(el));
+      })
+    );
   }
 }

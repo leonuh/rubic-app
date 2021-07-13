@@ -14,11 +14,11 @@ import {
   routingProviders,
   tokensToEthEstimatedGas,
   tokensToTokensEstimatedGas,
-  uniSwapContracts,
+  pancakeSwapContracts,
   WETH
 } from 'src/app/features/instant-trade/services/instant-trade-service/providers/pancake-swap-service/pankace-swap-constants';
 import { TransactionReceipt } from 'web3-eth';
-import { UniSwapTrade } from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap-types';
+import { UniSwapTrade } from 'src/app/features/instant-trade/services/instant-trade-service/models/uniswap.types';
 import { Web3Public } from 'src/app/core/services/blockchain/web3-public-service/Web3Public';
 import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import {
@@ -27,11 +27,12 @@ import {
 } from 'src/app/features/swaps/services/settings-service/settings.service';
 import { CommonUniswapV2Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/common-uniswap-v2/common-uniswap-v2.service';
 import { Observable } from 'rxjs';
+import { ItProvider } from 'src/app/features/instant-trade/services/instant-trade-service/models/it-provider';
 
 @Injectable({
   providedIn: 'root'
 })
-export class PancakeSwapService {
+export class PancakeSwapService implements ItProvider {
   protected blockchain: BLOCKCHAIN_NAME;
 
   protected shouldCalculateGas: boolean;
@@ -70,8 +71,12 @@ export class PancakeSwapService {
     });
   }
 
-  public needApprove(tokenAddress: string): Observable<BigNumber> {
-    return this.commonUniswapV2.needApprove(tokenAddress, this.web3Public);
+  public getAllowance(tokenAddress: string): Observable<BigNumber> {
+    return this.commonUniswapV2.getAllowance(
+      tokenAddress,
+      pancakeSwapContracts.address,
+      this.web3Public
+    );
   }
 
   public async approve(
@@ -81,7 +86,7 @@ export class PancakeSwapService {
     }
   ): Promise<void> {
     this.commonUniswapV2.checkSettings(this.blockchain);
-    return this.commonUniswapV2.approve(tokenAddress, options);
+    return this.commonUniswapV2.approve(tokenAddress, pancakeSwapContracts.address, options);
   }
 
   public async calculateTrade(
@@ -117,7 +122,7 @@ export class PancakeSwapService {
       this.settings,
       this.web3Public,
       routingProviders.addresses,
-      uniSwapContracts.address,
+      pancakeSwapContracts.address,
       abi,
       maxTransitTokens,
       estimatedGasArray
@@ -168,7 +173,7 @@ export class PancakeSwapService {
       return this.commonUniswapV2.createEthToTokensTrade(
         uniSwapTrade,
         options,
-        uniSwapContracts.address,
+        pancakeSwapContracts.address,
         abi
       );
     }
@@ -177,7 +182,7 @@ export class PancakeSwapService {
       return this.commonUniswapV2.createTokensToEthTrade(
         uniSwapTrade,
         options,
-        uniSwapContracts.address,
+        pancakeSwapContracts.address,
         abi
       );
     }
@@ -185,7 +190,7 @@ export class PancakeSwapService {
     return this.commonUniswapV2.createTokensToTokensTrade(
       uniSwapTrade,
       options,
-      uniSwapContracts.address,
+      pancakeSwapContracts.address,
       abi
     );
   }
