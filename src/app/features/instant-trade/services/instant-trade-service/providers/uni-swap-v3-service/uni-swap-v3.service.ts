@@ -22,19 +22,13 @@ import {
   SettingsService
 } from 'src/app/features/swaps/services/settings-service/settings.service';
 import { CoingeckoApiService } from 'src/app/core/services/external-api/coingecko-api/coingecko-api.service';
-import { LiquidtyPoolsController } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/LiquidtyPoolsController';
-import { LiquidityPool } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/models/LiquidityPool';
+import { LiquidityPoolsController } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/LiquidityPoolsController';
 import {
   ETHtoWETHEstimatedGas,
   swapEstimatedGas,
   WETHtoETHEstimatedGas
 } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/constants/estimatedGas';
-
-interface UniswapV3Route {
-  outputAbsoluteAmount: BigNumber;
-  poolsPath: LiquidityPool[];
-  initialTokenAddress: string;
-}
+import { UniswapV3Route } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/models/UniswapV3Route';
 
 interface IsEthFromOrTo {
   from: boolean;
@@ -47,11 +41,51 @@ interface IsEthFromOrTo {
 export class UniSwapV3Service implements ItProvider {
   private web3Public: Web3Public;
 
-  private liquidityPoolsController: LiquidtyPoolsController;
+  private liquidityPoolsController: LiquidityPoolsController;
 
   private WETHAddress: string;
 
   private settings: ItSettingsForm;
+
+  private static getSwapRouterExactInputMethodParams(
+    route: UniswapV3Route,
+    fromAmountAbsolute: string,
+    toTokenAddress: string,
+    amountOutMin: string,
+    walletAddress: string,
+    deadline: number
+  ): { methodName: string; methodArguments: unknown[] } {
+    let methodName: string;
+    let methodArguments: unknown[];
+    if (route.poolsPath.length === 1) {
+      methodName = 'exactInputSingle';
+      methodArguments = [
+        [
+          route.initialTokenAddress,
+          toTokenAddress,
+          route.poolsPath[0].fee,
+          walletAddress,
+          deadline,
+          fromAmountAbsolute,
+          amountOutMin,
+          0
+        ]
+      ];
+    } else {
+      methodName = 'exactInput';
+      methodArguments = [
+        [
+          LiquidityPoolsController.getContractPoolsPath(route.poolsPath, route.initialTokenAddress),
+          walletAddress,
+          deadline,
+          fromAmountAbsolute,
+          amountOutMin
+        ]
+      ];
+    }
+
+    return { methodName, methodArguments };
+  }
 
   constructor(
     private readonly web3PublicService: Web3PublicService,
@@ -61,7 +95,7 @@ export class UniSwapV3Service implements ItProvider {
     private readonly coingeckoApiService: CoingeckoApiService
   ) {
     this.web3Public = this.web3PublicService[BLOCKCHAIN_NAME.ETHEREUM];
-    this.liquidityPoolsController = new LiquidtyPoolsController(this.web3Public);
+    this.liquidityPoolsController = new LiquidityPoolsController(this.web3Public);
 
     this.WETHAddress = WETH.address;
 
@@ -144,17 +178,11 @@ export class UniSwapV3Service implements ItProvider {
     }
 
     const fromAmountAbsolute = fromAmount.multipliedBy(10 ** fromToken.decimals);
-    const routeLiquidityPoolsAddresses =
-      await this.liquidityPoolsController.getRoutesLiquidityPools(
-        fromTokenClone.address,
-        toTokenClone.address
-      );
     const { route, gasData } = await this.getToAmountAndPath(
       fromAmountAbsolute.toFixed(),
-      fromTokenClone,
+      fromTokenClone.address,
       toTokenClone,
       isEth,
-      routeLiquidityPoolsAddresses,
       this.settings.rubicOptimisation
     );
 
@@ -193,18 +221,16 @@ export class UniSwapV3Service implements ItProvider {
 
   private async getToAmountAndPath(
     fromAmountAbsolute: string,
-    fromToken: InstantTradeToken,
+    fromTokenAddress: string,
     toToken: InstantTradeToken,
     isEth: IsEthFromOrTo,
-    routeLiquidityPools: LiquidityPool[],
     shouldOptimiseGas: boolean
   ): Promise<{ route: UniswapV3Route; gasData: Gas }> {
     const routes = (
-      await this.getAllRoutes(
+      await this.liquidityPoolsController.getAllRoutes(
         fromAmountAbsolute,
-        fromToken,
-        toToken,
-        routeLiquidityPools,
+        fromTokenAddress,
+        toToken.address,
         this.settings.disableMultihops ? 0 : maxTransitPools
       )
     ).sort((a, b) => b.outputAbsoluteAmount.comparedTo(a.outputAbsoluteAmount));
@@ -265,96 +291,6 @@ export class UniSwapV3Service implements ItProvider {
     };
   }
 
-  private async getAllRoutes(
-    fromAmountAbsolute: string,
-    fromToken: InstantTradeToken,
-    toToken: InstantTradeToken,
-    routeLiquidityPools: LiquidityPool[],
-    routeMaxTransitPools: number
-  ): Promise<UniswapV3Route[]> {
-    const routePromises: Promise<UniswapV3Route>[] = [];
-
-    const addPath = (poolsPath: LiquidityPool[]) => {
-      routePromises.push(
-        new Promise<UniswapV3Route>((resolve, reject) => {
-          let methodName: string;
-          let methodArguments: unknown[];
-          if (poolsPath.length === 1) {
-            methodName = 'quoteExactInputSingle';
-            methodArguments = [
-              fromToken.address,
-              toToken.address,
-              poolsPath[0].fee,
-              fromAmountAbsolute,
-              0
-            ];
-          } else {
-            methodName = 'quoteExactInput';
-            methodArguments = [
-              this.liquidityPoolsController.getContractPoolsPath(poolsPath, fromToken.address),
-              fromAmountAbsolute
-            ];
-          }
-
-          this.web3Public
-            .callContractMethod(
-              uniSwapV3Contracts.quoter.address,
-              uniSwapV3Contracts.quoter.abi,
-              methodName,
-              {
-                methodArguments
-              }
-            )
-            .then((response: string) => {
-              resolve({
-                outputAbsoluteAmount: new BigNumber(response),
-                poolsPath,
-                initialTokenAddress: fromToken.address
-              });
-            })
-            .catch(err => {
-              console.debug(err);
-              reject();
-            });
-        })
-      );
-    };
-
-    const recGraphVisitor = (
-      path: LiquidityPool[],
-      lastTokenAddress: string,
-      mxTransitPools
-    ): void => {
-      if (path.length === mxTransitPools) {
-        const pools = routeLiquidityPools.filter(pool =>
-          LiquidtyPoolsController.isPoolWithTokens(pool, lastTokenAddress, toToken.address)
-        );
-        pools.forEach(pool => addPath(path.concat(pool)));
-        return;
-      }
-      routeLiquidityPools
-        .filter(pool => !path.includes(pool))
-        .forEach(pool => {
-          if (pool.token0.toLowerCase() === lastTokenAddress.toLowerCase()) {
-            const extendedPath = path.concat(pool);
-            recGraphVisitor(extendedPath, pool.token1, mxTransitPools);
-          }
-          if (pool.token1.toLowerCase() === lastTokenAddress.toLowerCase()) {
-            const extendedPath = path.concat(pool);
-            recGraphVisitor(extendedPath, pool.token0, mxTransitPools);
-          }
-        });
-    };
-
-    for (let i = 0; i <= routeMaxTransitPools; i++) {
-      recGraphVisitor([], fromToken.address, i);
-    }
-
-    return (await Promise.allSettled(routePromises))
-      .filter(res => res.status === 'fulfilled')
-      .map((res: PromiseFulfilledResult<UniswapV3Route>) => res.value);
-  }
-
   private async getEstimatedGas(
     fromAmountAbsolute: string,
     toTokenAddress: string,
@@ -388,7 +324,7 @@ export class UniSwapV3Service implements ItProvider {
     const amountOutMin = route.outputAbsoluteAmount
       .multipliedBy(new BigNumber(1).minus(this.settings.slippageTolerance))
       .toFixed(0);
-    const { methodName, methodArguments } = this.getSwapRouterExactInputMethodParams(
+    const { methodName, methodArguments } = UniSwapV3Service.getSwapRouterExactInputMethodParams(
       route,
       fromAmountAbsolute,
       toTokenAddress,
@@ -404,49 +340,6 @@ export class UniSwapV3Service implements ItProvider {
       walletAddress,
       isEth.from ? fromAmountAbsolute : null
     );
-  }
-
-  private getSwapRouterExactInputMethodParams(
-    route: UniswapV3Route,
-    fromAmountAbsolute: string,
-    toTokenAddress: string,
-    amountOutMin: string,
-    walletAddress: string,
-    deadline: number
-  ): { methodName: string; methodArguments: unknown[] } {
-    let methodName: string;
-    let methodArguments: unknown[];
-    if (route.poolsPath.length === 1) {
-      methodName = 'exactInputSingle';
-      methodArguments = [
-        [
-          route.initialTokenAddress,
-          toTokenAddress,
-          route.poolsPath[0].fee,
-          walletAddress,
-          deadline,
-          fromAmountAbsolute,
-          amountOutMin,
-          0
-        ]
-      ];
-    } else {
-      methodName = 'exactInput';
-      methodArguments = [
-        [
-          this.liquidityPoolsController.getContractPoolsPath(
-            route.poolsPath,
-            route.initialTokenAddress
-          ),
-          walletAddress,
-          deadline,
-          fromAmountAbsolute,
-          amountOutMin
-        ]
-      ];
-    }
-
-    return { methodName, methodArguments };
   }
 
   public async createTrade(
@@ -491,7 +384,7 @@ export class UniSwapV3Service implements ItProvider {
       .toFixed(0);
 
     const { methodName: exactInputMethodName, methodArguments: exactInputMethodArguments } =
-      this.getSwapRouterExactInputMethodParams(
+      UniSwapV3Service.getSwapRouterExactInputMethodParams(
         route,
         fromAmountAbsolute,
         toTokenAddress,
