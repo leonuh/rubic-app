@@ -171,7 +171,7 @@ export class UniSwapV3Service implements ItProvider {
       gasFeeInUsd: gasData.gasFeeInUsd,
       gasFeeInEth: gasData.gasFeeInEth,
       options: {
-        poolsPaths: route
+        poolsPath: route
       }
     };
   }
@@ -218,37 +218,37 @@ export class UniSwapV3Service implements ItProvider {
     const gasPrice = await this.web3Public.getGasPriceInETH();
     const ethPrice = await this.coingeckoApiService.getEtherPriceInUsd();
 
+    const getGasData = async (route: UniswapV3Route): Promise<Gas> => {
+      const estimatedGas = await this.getEstimatedGas(
+        fromAmountAbsolute,
+        toToken.address,
+        isEth,
+        route,
+        walletAddress,
+        deadline
+      );
+      const { gasFeeInEth, gasFeeInUsd } = await this.getGasFees(estimatedGas, gasPrice, ethPrice);
+      return {
+        estimatedGas,
+        gasFeeInEth,
+        gasFeeInUsd
+      };
+    };
+
     if (shouldOptimiseGas && toToken.price) {
       const promises: Promise<{
         route: UniswapV3Route;
         gasData: Gas;
         profit: BigNumber;
       }>[] = routes.map(async route => {
-        const estimatedGas = await this.getEstimatedGas(
-          fromAmountAbsolute,
-          toToken,
-          isEth,
-          route,
-          walletAddress,
-          deadline
-        );
-        const { gasFeeInEth, gasFeeInUsd } = await this.getGasFees(
-          estimatedGas,
-          gasPrice,
-          ethPrice
-        );
+        const gasData = await getGasData(route);
         const profit = route.outputAbsoluteAmount
           .div(10 ** toToken.decimals)
           .multipliedBy(toToken.price)
-          .minus(gasFeeInUsd);
-
+          .minus(gasData.gasFeeInUsd);
         return {
           route,
-          gasData: {
-            estimatedGas,
-            gasFeeInUsd,
-            gasFeeInEth
-          },
+          gasData,
           profit
         };
       });
@@ -258,23 +258,10 @@ export class UniSwapV3Service implements ItProvider {
     }
 
     const route = routes[0];
-    const estimatedGas = await this.getEstimatedGas(
-      fromAmountAbsolute,
-      toToken,
-      isEth,
-      route,
-      walletAddress,
-      deadline
-    );
-    const { gasFeeInEth, gasFeeInUsd } = await this.getGasFees(estimatedGas, gasPrice, ethPrice);
-
+    const gasData = await getGasData(route);
     return {
       route,
-      gasData: {
-        estimatedGas,
-        gasFeeInEth,
-        gasFeeInUsd
-      }
+      gasData
     };
   }
 
@@ -370,7 +357,7 @@ export class UniSwapV3Service implements ItProvider {
 
   private async getEstimatedGas(
     fromAmountAbsolute: string,
-    toToken: InstantTradeToken,
+    toTokenAddress: string,
     isEth: IsEthFromOrTo,
     route: UniswapV3Route,
     walletAddress: string,
@@ -398,6 +385,30 @@ export class UniSwapV3Service implements ItProvider {
       );
     }
 
+    const { methodName, methodArguments } = this.getSwapRouterMethodParams(
+      route,
+      fromAmountAbsolute,
+      toTokenAddress,
+      walletAddress,
+      deadline
+    );
+    return this.web3Public.getEstimatedGas(
+      uniSwapV3Contracts.swapRouter.abi,
+      uniSwapV3Contracts.swapRouter.address,
+      methodName,
+      methodArguments,
+      walletAddress,
+      isEth.from ? fromAmountAbsolute : null
+    );
+  }
+
+  private getSwapRouterMethodParams(
+    route: UniswapV3Route,
+    fromAmountAbsolute: string,
+    toTokenAddress: string,
+    walletAddress: string,
+    deadline: number
+  ): { methodName: string; methodArguments: unknown[] } {
     const amountOutMin = route.outputAbsoluteAmount
       .multipliedBy(new BigNumber(1).minus(this.settings.slippageTolerance))
       .toFixed(0);
@@ -409,7 +420,7 @@ export class UniSwapV3Service implements ItProvider {
       methodArguments = [
         [
           route.initialTokenAddress,
-          toToken.address,
+          toTokenAddress,
           route.poolsPath[0].fee,
           walletAddress,
           deadline,
@@ -421,31 +432,55 @@ export class UniSwapV3Service implements ItProvider {
     } else {
       methodName = 'exactInput';
       methodArguments = [
-        this.liquidityPoolsController.getContractPoolsPath(
-          route.poolsPath,
-          route.initialTokenAddress
-        ),
-        walletAddress,
-        deadline,
-        fromAmountAbsolute,
-        amountOutMin
+        [
+          this.liquidityPoolsController.getContractPoolsPath(
+            route.poolsPath,
+            route.initialTokenAddress
+          ),
+          walletAddress,
+          deadline,
+          fromAmountAbsolute,
+          amountOutMin
+        ]
       ];
     }
 
-    return this.web3Public.getEstimatedGas(
-      uniSwapV3Contracts.swapRouter.abi,
-      uniSwapV3Contracts.swapRouter.address,
-      methodName,
-      methodArguments,
-      walletAddress,
-      isEth.from ? fromAmountAbsolute : null
-    );
+    return { methodName, methodArguments };
   }
 
-  public createTrade(
+  public async createTrade(
     trade: InstantTrade,
     options: { onConfirm?: (hash: string) => void; onApprove?: (hash: string | null) => void }
   ): Promise<TransactionReceipt> {
-    return Promise.resolve(undefined);
+    this.providerConnectorService.checkSettings(BLOCKCHAIN_NAME.ETHEREUM);
+
+    const walletAddress = this.providerConnectorService.address;
+    await this.web3Public.checkBalance(trade.from.token, walletAddress, trade.from.amount);
+
+    const route = trade.options.poolsPath;
+    const fromAmountAbsolute = trade.from.amount
+      .multipliedBy(10 ** trade.from.token.decimals)
+      .toFixed(0);
+    const deadline = Math.floor(Date.now() / 1000) + 60 * this.settings.deadline;
+
+    const { methodName, methodArguments } = this.getSwapRouterMethodParams(
+      route,
+      fromAmountAbsolute,
+      trade.to.token.address,
+      walletAddress,
+      deadline
+    );
+    return this.web3PrivateService.executeContractMethod(
+      uniSwapV3Contracts.swapRouter.address,
+      uniSwapV3Contracts.swapRouter.abi,
+      methodName,
+      methodArguments,
+      {
+        value: this.web3Public.isNativeAddress(route.initialTokenAddress)
+          ? fromAmountAbsolute
+          : null,
+        onTransactionHash: options.onConfirm
+      }
+    );
   }
 }
