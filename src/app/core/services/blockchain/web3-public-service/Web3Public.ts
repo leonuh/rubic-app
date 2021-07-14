@@ -31,10 +31,6 @@ export class Web3Public {
     });
   }
 
-  public get batchRequest() {
-    return new this.web3.BatchRequest();
-  }
-
   public get nativeTokenAddress(): string {
     return NATIVE_TOKEN_ADDRESS;
   }
@@ -260,6 +256,15 @@ export class Web3Public {
     return contract.methods[methodName](...options.methodArguments).call({
       ...(options.from && { from: options.from })
     });
+  }
+
+  public encodeFunctionCall(
+    contractAbi: AbiItem[],
+    methodName: string,
+    methodArguments: unknown[]
+  ): string {
+    const methodSignature = contractAbi.find(abiItem => abiItem.name === methodName);
+    return this.web3.eth.abi.encodeFunctionCall(methodSignature, methodArguments as string[]);
   }
 
   private getTokenInfoCachingDecorator(): (

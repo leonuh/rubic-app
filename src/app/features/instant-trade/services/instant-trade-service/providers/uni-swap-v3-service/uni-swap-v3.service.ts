@@ -385,10 +385,14 @@ export class UniSwapV3Service implements ItProvider {
       );
     }
 
-    const { methodName, methodArguments } = this.getSwapRouterMethodParams(
+    const amountOutMin = route.outputAbsoluteAmount
+      .multipliedBy(new BigNumber(1).minus(this.settings.slippageTolerance))
+      .toFixed(0);
+    const { methodName, methodArguments } = this.getSwapRouterExactInputMethodParams(
       route,
       fromAmountAbsolute,
       toTokenAddress,
+      amountOutMin,
       walletAddress,
       deadline
     );
@@ -402,17 +406,14 @@ export class UniSwapV3Service implements ItProvider {
     );
   }
 
-  private getSwapRouterMethodParams(
+  private getSwapRouterExactInputMethodParams(
     route: UniswapV3Route,
     fromAmountAbsolute: string,
     toTokenAddress: string,
+    amountOutMin: string,
     walletAddress: string,
     deadline: number
   ): { methodName: string; methodArguments: unknown[] } {
-    const amountOutMin = route.outputAbsoluteAmount
-      .multipliedBy(new BigNumber(1).minus(this.settings.slippageTolerance))
-      .toFixed(0);
-
     let methodName: string;
     let methodArguments: unknown[];
     if (route.poolsPath.length === 1) {
@@ -461,24 +462,72 @@ export class UniSwapV3Service implements ItProvider {
     const fromAmountAbsolute = trade.from.amount
       .multipliedBy(10 ** trade.from.token.decimals)
       .toFixed(0);
-    const deadline = Math.floor(Date.now() / 1000) + 60 * this.settings.deadline;
+    const isEth: IsEthFromOrTo = {
+      from: this.web3Public.isNativeAddress(trade.from.token.address),
+      to: this.web3Public.isNativeAddress(trade.to.token.address)
+    };
 
-    const { methodName, methodArguments } = this.getSwapRouterMethodParams(
+    return this.swapTokens(
       route,
       fromAmountAbsolute,
       trade.to.token.address,
+      isEth,
       walletAddress,
-      deadline
+      options
     );
+  }
+
+  private swapTokens(
+    route: UniswapV3Route,
+    fromAmountAbsolute: string,
+    toTokenAddress: string,
+    isEth: IsEthFromOrTo,
+    walletAddress: string,
+    options: { onConfirm?: (hash: string) => void; onApprove?: (hash: string | null) => void }
+  ): Promise<TransactionReceipt> {
+    const deadline = Math.floor(Date.now() / 1000) + 60 * this.settings.deadline;
+    const amountOutMin = route.outputAbsoluteAmount
+      .multipliedBy(new BigNumber(1).minus(this.settings.slippageTolerance))
+      .toFixed(0);
+
+    const { methodName: exactInputMethodName, methodArguments: exactInputMethodArguments } =
+      this.getSwapRouterExactInputMethodParams(
+        route,
+        fromAmountAbsolute,
+        toTokenAddress,
+        amountOutMin,
+        walletAddress,
+        deadline
+      );
+
+    let methodName: string;
+    let methodArguments: unknown[];
+    if (!isEth.to) {
+      methodName = exactInputMethodName;
+      methodArguments = exactInputMethodArguments;
+    } else {
+      const exactInputMethodEncoded = this.web3Public.encodeFunctionCall(
+        uniSwapV3Contracts.swapRouter.abi,
+        exactInputMethodName,
+        exactInputMethodArguments
+      );
+      const unwrapWETHMethodEncoded = this.web3Public.encodeFunctionCall(
+        uniSwapV3Contracts.swapRouter.abi,
+        'unwrapWETH9',
+        [amountOutMin, walletAddress]
+      );
+
+      methodName = 'multicall';
+      methodArguments = [[exactInputMethodEncoded, unwrapWETHMethodEncoded]];
+    }
+
     return this.web3PrivateService.executeContractMethod(
       uniSwapV3Contracts.swapRouter.address,
       uniSwapV3Contracts.swapRouter.abi,
       methodName,
       methodArguments,
       {
-        value: this.web3Public.isNativeAddress(route.initialTokenAddress)
-          ? fromAmountAbsolute
-          : null,
+        value: isEth.from ? fromAmountAbsolute : null,
         onTransactionHash: options.onConfirm
       }
     );
