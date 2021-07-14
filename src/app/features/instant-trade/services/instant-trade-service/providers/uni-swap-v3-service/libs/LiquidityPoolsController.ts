@@ -22,7 +22,15 @@ interface Immutables {
 const EMPTY_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export class LiquidityPoolsController {
-  private liquidityPools: LiquidityPool[];
+  private readonly routerTokens: {
+    [symbol: string]: string;
+  };
+
+  private readonly routerLiquidityPools: LiquidityPool[];
+
+  private readonly factoryContract;
+
+  private readonly feeAmounts: FeeAmount[];
 
   public static isPoolWithTokens(pool: LiquidityPool, tokenA: string, tokenB: string): boolean {
     return (
@@ -46,8 +54,20 @@ export class LiquidityPoolsController {
     return `0x${contractPath}`;
   }
 
-  constructor(private readonly web3Public: Web3Public) {
-    this.liquidityPools = routerLiquidityPools.mainnet;
+  constructor(private readonly web3Public: Web3Public, private readonly isTestingMode: boolean) {
+    if (!isTestingMode) {
+      this.routerTokens = routerTokens.mainnet;
+      this.routerLiquidityPools = routerLiquidityPools.mainnet;
+    } else {
+      this.routerTokens = routerTokens.testnet;
+      this.routerLiquidityPools = routerLiquidityPools.testnet;
+    }
+
+    this.factoryContract = this.web3Public.getContract(
+      factoryContractData.address,
+      factoryContractData.abi
+    );
+    this.feeAmounts = [500, 3000, 10000];
   }
 
   private async getPoolImmutables(poolContract): Promise<Immutables> {
@@ -63,7 +83,7 @@ export class LiquidityPoolsController {
   }
 
   private async getPoolByAddress(poolAddress: string): Promise<LiquidityPool> {
-    const foundPool = this.liquidityPools.find(pool => pool.address === poolAddress);
+    const foundPool = this.routerLiquidityPools.find(pool => pool.address === poolAddress);
     if (foundPool) {
       return foundPool;
     }
@@ -87,35 +107,33 @@ export class LiquidityPoolsController {
     fromTokenAddress: string,
     toTokenAddress: string
   ): Promise<LiquidityPool[]> {
-    const factoryContract = this.web3Public.getContract(
-      factoryContractData.address,
-      factoryContractData.abi
-    );
-    const feeAmounts: FeeAmount[] = [500, 3000, 10000];
-
-    const promises = [];
-    Object.values(routerTokens).forEach(routeTokenAddress => {
-      feeAmounts.forEach(fee => {
-        promises.push(
-          factoryContract.methods.getPool(fromTokenAddress, routeTokenAddress, fee).call()
-        );
-        promises.push(
-          factoryContract.methods.getPool(toTokenAddress, routeTokenAddress, fee).call()
-        );
+    const poolsAddressesPromises = [];
+    Object.values(this.routerTokens).forEach(routeTokenAddress => {
+      this.feeAmounts.forEach(fee => {
+        if (
+          fromTokenAddress.toLowerCase() !== routeTokenAddress.toLowerCase() &&
+          toTokenAddress.toLowerCase() !== routeTokenAddress.toLowerCase()
+        ) {
+          poolsAddressesPromises.push(
+            this.factoryContract.methods.getPool(fromTokenAddress, routeTokenAddress, fee).call()
+          );
+          poolsAddressesPromises.push(
+            this.factoryContract.methods.getPool(toTokenAddress, routeTokenAddress, fee).call()
+          );
+        }
       });
     });
-    feeAmounts.forEach(fee => {
-      promises.push(factoryContract.methods.getPool(fromTokenAddress, toTokenAddress, fee).call());
+    this.feeAmounts.forEach(fee => {
+      poolsAddressesPromises.push(
+        this.factoryContract.methods.getPool(fromTokenAddress, toTokenAddress, fee).call()
+      );
     });
 
-    const poolAddresses = await Promise.all(promises);
-    return (
-      await Promise.all(
-        [...new Set(poolAddresses)]
-          .filter(poolAddress => poolAddress !== EMPTY_ADDRESS)
-          .map(poolAddress => this.getPoolByAddress(poolAddress))
-      )
-    ).filter(pool => !!pool);
+    const poolsAddresses = await Promise.all(poolsAddressesPromises);
+    const poolsPromises = [...new Set(poolsAddresses)]
+      .filter(poolAddress => poolAddress !== EMPTY_ADDRESS)
+      .map(poolAddress => this.getPoolByAddress(poolAddress));
+    return (await Promise.all(poolsPromises)).filter(pool => !!pool);
   }
 
   public async getAllRoutes(

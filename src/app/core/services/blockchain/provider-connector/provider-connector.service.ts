@@ -173,8 +173,8 @@ export class ProviderConnectorService {
 
     const isTestingMode = this.useTestingModeService.isTestingMode.getValue();
     if (
-      this.networkName !== selectedBlockchain ||
-      (isTestingMode && this.networkName !== `${selectedBlockchain}_TESTNET`)
+      this.networkName !== selectedBlockchain &&
+      (!isTestingMode || this.networkName !== `${selectedBlockchain}_TESTNET`)
     ) {
       if (this.providerName === WALLET_NAME.METAMASK) {
         throw new NetworkError(selectedBlockchain);

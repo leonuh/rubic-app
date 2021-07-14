@@ -1,4 +1,3 @@
-import { WETH as UniSwapWETH } from '@uniswap/sdk';
 import InstantTradeToken from 'src/app/features/instant-trade/models/InstantTradeToken';
 import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE_TOKEN_ADDRESS';
 
@@ -33,7 +32,7 @@ const ETH: InstantTradeToken = {
 };
 
 const WETH: InstantTradeToken = {
-  address: UniSwapWETH['42'].address,
+  address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
   decimals: 18,
   symbol: 'WETH'
 };

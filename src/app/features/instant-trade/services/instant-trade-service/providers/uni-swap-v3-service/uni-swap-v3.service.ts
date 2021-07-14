@@ -12,7 +12,7 @@ import { ProviderConnectorService } from 'src/app/core/services/blockchain/provi
 import {
   maxTransitPools,
   uniSwapV3Contracts,
-  WETH
+  WETHAddress
 } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/uni-swap-v3-constants';
 import { Web3PrivateService } from 'src/app/core/services/blockchain/web3-private-service/web3-private.service';
 import InsufficientLiquidityError from 'src/app/core/errors/models/instant-trade/insufficient-liquidity.error';
@@ -29,6 +29,8 @@ import {
   WETHtoETHEstimatedGas
 } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/constants/estimatedGas';
 import { UniswapV3Route } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/models/UniswapV3Route';
+import { UseTestingModeService } from 'src/app/core/services/use-testing-mode/use-testing-mode.service';
+import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE_TOKEN_ADDRESS';
 
 interface IsEthFromOrTo {
   from: boolean;
@@ -92,12 +94,14 @@ export class UniSwapV3Service implements ItProvider {
     private readonly providerConnectorService: ProviderConnectorService,
     private readonly web3PrivateService: Web3PrivateService,
     private readonly settingsService: SettingsService,
-    private readonly coingeckoApiService: CoingeckoApiService
+    private readonly coingeckoApiService: CoingeckoApiService,
+    private readonly useTestingModeService: UseTestingModeService
   ) {
-    this.web3Public = this.web3PublicService[BLOCKCHAIN_NAME.ETHEREUM];
-    this.liquidityPoolsController = new LiquidityPoolsController(this.web3Public);
-
-    this.WETHAddress = WETH.address;
+    this.useTestingModeService.isTestingMode.subscribe(isTestingMode => {
+      this.web3Public = this.web3PublicService[BLOCKCHAIN_NAME.ETHEREUM];
+      this.liquidityPoolsController = new LiquidityPoolsController(this.web3Public, isTestingMode);
+      this.WETHAddress = !isTestingMode ? WETHAddress.mainnet : WETHAddress.testnet;
+    });
 
     const settingsForm = this.settingsService.settingsForm.controls.INSTANT_TRADE;
     this.setSettings(settingsForm.value);
@@ -144,17 +148,7 @@ export class UniSwapV3Service implements ItProvider {
     fromToken: InstantTradeToken,
     toToken: InstantTradeToken
   ): Promise<InstantTrade> {
-    const fromTokenClone = { ...fromToken };
-    const toTokenClone = { ...toToken };
-    const isEth: IsEthFromOrTo = {} as IsEthFromOrTo;
-    if (this.web3Public.isNativeAddress(fromToken.address)) {
-      fromTokenClone.address = this.WETHAddress;
-      isEth.from = true;
-    }
-    if (this.web3Public.isNativeAddress(toToken.address)) {
-      toTokenClone.address = this.WETHAddress;
-      isEth.to = true;
-    }
+    const { fromTokenWrapped, toTokenWrapped, isEth } = this.getWrappedTokens(fromToken, toToken);
 
     if (
       (isEth.from && toToken.address.toLowerCase() === this.WETHAddress.toLowerCase()) ||
@@ -180,8 +174,8 @@ export class UniSwapV3Service implements ItProvider {
     const fromAmountAbsolute = fromAmount.multipliedBy(10 ** fromToken.decimals);
     const { route, gasData } = await this.getToAmountAndPath(
       fromAmountAbsolute.toFixed(),
-      fromTokenClone.address,
-      toTokenClone,
+      fromTokenWrapped.address,
+      toTokenWrapped,
       isEth,
       this.settings.rubicOptimisation
     );
@@ -201,6 +195,32 @@ export class UniSwapV3Service implements ItProvider {
       options: {
         poolsPath: route
       }
+    };
+  }
+
+  private getWrappedTokens(
+    fromToken: InstantTradeToken,
+    toToken: InstantTradeToken
+  ): {
+    fromTokenWrapped: InstantTradeToken;
+    toTokenWrapped: InstantTradeToken;
+    isEth: IsEthFromOrTo;
+  } {
+    const fromTokenWrapped = { ...fromToken };
+    const toTokenWrapped = { ...toToken };
+    const isEth: IsEthFromOrTo = {} as IsEthFromOrTo;
+    if (this.web3Public.isNativeAddress(fromToken.address)) {
+      fromTokenWrapped.address = this.WETHAddress;
+      isEth.from = true;
+    }
+    if (this.web3Public.isNativeAddress(toToken.address)) {
+      toTokenWrapped.address = this.WETHAddress;
+      isEth.to = true;
+    }
+    return {
+      fromTokenWrapped,
+      toTokenWrapped,
+      isEth
     };
   }
 
@@ -355,15 +375,12 @@ export class UniSwapV3Service implements ItProvider {
     const fromAmountAbsolute = trade.from.amount
       .multipliedBy(10 ** trade.from.token.decimals)
       .toFixed(0);
-    const isEth: IsEthFromOrTo = {
-      from: this.web3Public.isNativeAddress(trade.from.token.address),
-      to: this.web3Public.isNativeAddress(trade.to.token.address)
-    };
+    const { toTokenWrapped, isEth } = this.getWrappedTokens(trade.from.token, trade.to.token);
 
     return this.swapTokens(
       route,
       fromAmountAbsolute,
-      trade.to.token.address,
+      toTokenWrapped.address,
       isEth,
       walletAddress,
       options
@@ -383,22 +400,30 @@ export class UniSwapV3Service implements ItProvider {
       .multipliedBy(new BigNumber(1).minus(this.settings.slippageTolerance))
       .toFixed(0);
 
-    const { methodName: exactInputMethodName, methodArguments: exactInputMethodArguments } =
-      UniSwapV3Service.getSwapRouterExactInputMethodParams(
-        route,
-        fromAmountAbsolute,
-        toTokenAddress,
-        amountOutMin,
-        walletAddress,
-        deadline
-      );
-
     let methodName: string;
     let methodArguments: unknown[];
     if (!isEth.to) {
+      const { methodName: exactInputMethodName, methodArguments: exactInputMethodArguments } =
+        UniSwapV3Service.getSwapRouterExactInputMethodParams(
+          route,
+          fromAmountAbsolute,
+          toTokenAddress,
+          amountOutMin,
+          walletAddress,
+          deadline
+        );
       methodName = exactInputMethodName;
       methodArguments = exactInputMethodArguments;
     } else {
+      const { methodName: exactInputMethodName, methodArguments: exactInputMethodArguments } =
+        UniSwapV3Service.getSwapRouterExactInputMethodParams(
+          route,
+          fromAmountAbsolute,
+          toTokenAddress,
+          amountOutMin,
+          NATIVE_TOKEN_ADDRESS,
+          deadline
+        );
       const exactInputMethodEncoded = this.web3Public.encodeFunctionCall(
         uniSwapV3Contracts.swapRouter.abi,
         exactInputMethodName,

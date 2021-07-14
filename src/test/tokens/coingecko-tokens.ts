@@ -3,7 +3,7 @@ import { TOKEN_RANK } from 'src/app/shared/models/tokens/TOKEN_RANK';
 import BigNumber from 'bignumber.js';
 import { TokenAmount } from 'src/app/shared/models/tokens/TokenAmount';
 import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE_TOKEN_ADDRESS';
-import { ETH, WEENUS, WSATT, XEENUS, YEENUS } from './eth-tokens';
+import { ETH, WEENUS, WETH, WSATT, XEENUS, YEENUS } from './eth-tokens';
 
 const eth: TokenAmount = {
   name: 'Ethereum',
@@ -11,6 +11,19 @@ const eth: TokenAmount = {
   blockchain: BLOCKCHAIN_NAME.ETHEREUM,
   address: ETH.address,
   decimals: ETH.decimals,
+  image: 'https://dev-api.rubic.exchange/media/token_images/cg_logo_CHOP_Porkchop.png',
+  rank: TOKEN_RANK.HIGH,
+  price: 1705,
+  usedInIframe: true,
+  amount: new BigNumber(0)
+};
+
+const wethInEthereum: TokenAmount = {
+  name: 'Wrapped Ethereum',
+  symbol: WETH.symbol,
+  blockchain: BLOCKCHAIN_NAME.ETHEREUM,
+  address: WETH.address,
+  decimals: WETH.decimals,
   image: 'https://dev-api.rubic.exchange/media/token_images/cg_logo_CHOP_Porkchop.png',
   rank: TOKEN_RANK.HIGH,
   price: 1705,
@@ -122,4 +135,15 @@ const matic: TokenAmount = {
   amount: new BigNumber(0)
 };
 
-export const coingeckoTestTokens = [eth, weenus, yeenus, xeenus, wsatt, rbc, bnb, wrbc, matic];
+export const coingeckoTestTokens = [
+  eth,
+  wethInEthereum,
+  weenus,
+  yeenus,
+  xeenus,
+  wsatt,
+  rbc,
+  bnb,
+  wrbc,
+  matic
+];
