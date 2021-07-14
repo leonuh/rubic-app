@@ -24,6 +24,7 @@ import { TranslateService } from '@ngx-translate/core';
 import TransactionRevertedError from 'src/app/core/errors/models/common/transaction-reverted.error';
 import { SushiSwapPolygonService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-polygon-service/sushi-swap-polygon.service';
 import { SushiSwapEthService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-eth-service/sushi-swap-eth.service';
+import { ZrxEthService } from './providers/zrx-eth-service/zrx-eth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -45,6 +46,7 @@ export class InstantTradeService {
     private readonly oneInchBscService: OneInchBscService,
     private readonly sushiSwapEthService: SushiSwapEthService,
     private readonly sushiSwapPolygonService: SushiSwapPolygonService,
+    private readonly zrxService: ZrxEthService,
     // Providers end
     private readonly instantTradesApiService: InstantTradesApiService,
     private readonly errorService: ErrorsService,
@@ -158,16 +160,19 @@ export class InstantTradeService {
       [BLOCKCHAIN_NAME.ETHEREUM]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchEthService,
         [INSTANT_TRADES_PROVIDER.UNISWAP]: this.uniswapService,
-        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapEthService
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapEthService,
+        [INSTANT_TRADES_PROVIDER.ZRX]: this.zrxService
       },
       [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchBscService,
-        [INSTANT_TRADES_PROVIDER.PANCAKESWAP]: this.pancakeSwapService
+        [INSTANT_TRADES_PROVIDER.PANCAKESWAP]: this.pancakeSwapService,
+        [INSTANT_TRADES_PROVIDER.ZRX]: this.zrxService
       },
       [BLOCKCHAIN_NAME.POLYGON]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchPolygonService,
         [INSTANT_TRADES_PROVIDER.QUICKSWAP]: this.quickSwapService,
-        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapPolygonService
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapPolygonService,
+        [INSTANT_TRADES_PROVIDER.ZRX]: this.zrxService
       }
     });
   }
