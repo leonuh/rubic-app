@@ -50,11 +50,13 @@ export class ZrxService implements ItProvider {
     private readonly swapFormService: SwapFormService,
     private readonly httpService: HttpService
   ) {
-    this.swapFormService.commonTrade.controls.input.valueChanges.subscribe(({ fromBlockchain }) => {
-      this.web3Public = this.w3Public[fromBlockchain];
-      this.blockchain = BLOCKCHAIN_NAME[fromBlockchain];
-      this.apiAddress = ZRX_API_ADDRESS[fromBlockchain];
-    });
+    this.swapFormService.commonTrade.controls.input.controls.fromBlockchain.valueChanges.subscribe(
+      fromBlockchain => {
+        this.web3Public = this.w3Public[fromBlockchain];
+        this.blockchain = fromBlockchain;
+        this.apiAddress = ZRX_API_ADDRESS[fromBlockchain];
+      }
+    );
 
     const form = this.settingsService.settingsForm.controls.INSTANT_TRADE;
     this.settings = {
