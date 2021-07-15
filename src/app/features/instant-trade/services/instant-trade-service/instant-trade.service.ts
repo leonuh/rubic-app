@@ -112,7 +112,11 @@ export class InstantTradeService {
                 network: TO_BACKEND_BLOCKCHAINS[this.currentBlockchain]
               };
             }
-            await this.postTrade(tradeInfo);
+            try {
+              await this.postTrade(tradeInfo);
+            } catch (err) {
+              console.error(err);
+            }
             this.modalShowing = this.notificationsService
               .show(this.translateService.instant('notifications.tradeInProgress'), {
                 status: TuiNotification.Info,

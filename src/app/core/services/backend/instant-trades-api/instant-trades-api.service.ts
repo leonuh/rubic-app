@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { delay, map } from 'rxjs/operators';
+import { catchError, delay, map } from 'rxjs/operators';
 import { FROM_BACKEND_BLOCKCHAINS } from 'src/app/shared/constants/blockchain/BACKEND_BLOCKCHAINS';
 import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
 import { TableToken, TableTrade } from 'src/app/shared/models/my-trades/TableTrade';
@@ -57,7 +57,15 @@ export class InstantTradesApiService {
       price: trade.from.token.price
     };
 
-    return this.httpService.post(BOT_URL.INSTANT_TRADES, req).toPromise();
+    return this.httpService
+      .post(BOT_URL.INSTANT_TRADES, req)
+      .pipe(
+        catchError(err => {
+          console.error(err);
+          return of(null);
+        })
+      )
+      .toPromise();
   }
 
   /**

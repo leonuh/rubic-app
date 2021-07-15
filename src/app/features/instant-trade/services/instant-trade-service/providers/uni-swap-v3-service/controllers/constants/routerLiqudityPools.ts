@@ -1,6 +1,6 @@
-import { LiquidityPool } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/models/LiquidityPool';
+import { LiquidityPool } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/controllers/models/LiquidityPool';
 
-export const routerTokens = {
+export const routerTokensWithMode = {
   mainnet: {
     WETH: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     USDT: '0xdac17f958d2ee523a2206206994597c13d831ec7',
@@ -15,10 +15,10 @@ export const routerTokens = {
   }
 };
 
-const mainnetRouterTokens = routerTokens.mainnet;
-const testnetRouterTokens = routerTokens.testnet;
+const mainnetRouterTokens = routerTokensWithMode.mainnet;
+const testnetRouterTokens = routerTokensWithMode.testnet;
 
-export const routerLiquidityPools: {
+export const routerLiquidityPoolsWithMode: {
   mainnet: LiquidityPool[];
   testnet: LiquidityPool[];
 } = {

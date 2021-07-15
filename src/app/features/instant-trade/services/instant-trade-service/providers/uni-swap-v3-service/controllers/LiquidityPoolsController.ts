@@ -1,14 +1,14 @@
 import { Web3Public } from 'src/app/core/services/blockchain/web3-public-service/Web3Public';
-import { factoryContractData } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/constants/factoryContractData';
+import { factoryContractData } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/controllers/constants/factoryContractData';
 import {
-  routerLiquidityPools,
-  routerTokens
-} from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/constants/routerLiqudityPools';
+  routerLiquidityPoolsWithMode,
+  routerTokensWithMode
+} from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/controllers/constants/routerLiqudityPools';
 import {
   FeeAmount,
   LiquidityPool
-} from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/models/LiquidityPool';
-import { poolContractAbi } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/libs/constants/poolContractAbi';
+} from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/controllers/models/LiquidityPool';
+import { poolContractAbi } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/controllers/constants/poolContractAbi';
 import { UniswapV3Route } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/models/UniswapV3Route';
 import { uniSwapV3Contracts } from 'src/app/features/instant-trade/services/instant-trade-service/providers/uni-swap-v3-service/uni-swap-v3-constants';
 import BigNumber from 'bignumber.js';
@@ -54,13 +54,13 @@ export class LiquidityPoolsController {
     return `0x${contractPath}`;
   }
 
-  constructor(private readonly web3Public: Web3Public, private readonly isTestingMode: boolean) {
+  constructor(private readonly web3Public: Web3Public, isTestingMode: boolean) {
     if (!isTestingMode) {
-      this.routerTokens = routerTokens.mainnet;
-      this.routerLiquidityPools = routerLiquidityPools.mainnet;
+      this.routerTokens = routerTokensWithMode.mainnet;
+      this.routerLiquidityPools = routerLiquidityPoolsWithMode.mainnet;
     } else {
-      this.routerTokens = routerTokens.testnet;
-      this.routerLiquidityPools = routerLiquidityPools.testnet;
+      this.routerTokens = routerTokensWithMode.testnet;
+      this.routerLiquidityPools = routerLiquidityPoolsWithMode.testnet;
     }
 
     this.factoryContract = this.web3Public.getContract(
