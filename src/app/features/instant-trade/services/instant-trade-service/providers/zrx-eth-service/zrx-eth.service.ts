@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import BigNumber from 'bignumber.js';
 import { TransactionReceipt } from 'web3-eth';
-import { Observable } from 'rxjs';
+import { from, Observable } from 'rxjs';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ItProvider } from '../../models/it-provider';
 import InstantTrade from '../../../../models/InstantTrade';
@@ -15,6 +15,9 @@ import {
 import { Web3Public } from '../../../../../../core/services/blockchain/web3-public-service/Web3Public';
 import { CoingeckoApiService } from '../../../../../../core/services/external-api/coingecko-api/coingecko-api.service';
 import { BLOCKCHAIN_NAME } from '../../../../../../shared/models/blockchain/BLOCKCHAIN_NAME';
+import { ProviderConnectorService } from '../../../../../../core/services/blockchain/provider-connector/provider-connector.service';
+import { Web3PrivateService } from '../../../../../../core/services/blockchain/web3-private-service/web3-private.service';
+import { CommonUniswapService } from '../common-uniswap/common-uniswap.service';
 
 @Injectable({
   providedIn: 'root'
@@ -24,13 +27,22 @@ export class ZrxEthService implements ItProvider {
 
   private settings: ItSettingsForm;
 
+  private tradeData;
+
+  protected blockchain: BLOCKCHAIN_NAME;
+
   constructor(
     private http: HttpClient,
     private readonly settingsService: SettingsService,
     private readonly w3Public: Web3PublicService,
-    private readonly coingeckoApiService: CoingeckoApiService
+    private readonly coingeckoApiService: CoingeckoApiService,
+    private readonly providerConnector: ProviderConnectorService,
+    private readonly web3PrivateService: Web3PrivateService,
+    private readonly commonUniswap: CommonUniswapService,
+    public providerConnectorService: ProviderConnectorService
   ) {
-    this.web3Public = this.w3Public[BLOCKCHAIN_NAME.ETHEREUM_TESTNET];
+    this.web3Public = this.w3Public[BLOCKCHAIN_NAME.ETHEREUM];
+    this.blockchain = BLOCKCHAIN_NAME.ETHEREUM;
     const form = this.settingsService.settingsForm.controls.INSTANT_TRADE;
     this.settings = {
       ...form.value,
@@ -51,8 +63,13 @@ export class ZrxEthService implements ItProvider {
       onApprove?: (hash: string) => void;
     } = {}
   ): Promise<TransactionReceipt> {
-    console.log('create trade zrx');
-    return Promise.resolve();
+    const amount = Web3PublicService.weiToAmount(this.tradeData.sellAmount, 18).toString(10);
+    return this.web3PrivateService.sendTransaction(this.tradeData.to, amount, {
+      data: this.tradeData.data,
+      gas: this.tradeData.gas,
+      gasPrice: this.tradeData.gasPrice,
+      value: this.tradeData.value
+    });
   }
 
   public async calculateTrade(
@@ -60,28 +77,39 @@ export class ZrxEthService implements ItProvider {
     fromToken: InstantTradeToken,
     toToken: InstantTradeToken
   ): Promise<InstantTrade> {
+    const fromTokenClone = { ...fromToken };
+    const toTokenClone = { ...toToken };
 
-    const params = {
-      sellToken: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
-      buyToken: toToken.address,
-      sellAmount: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
-      slippagePercentage: this.settings.slippageTolerance.toString()
-    };
+    if (this.web3Public.isNativeAddress(fromToken.address)) {
+      fromTokenClone.address = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    }
+
+    if (this.web3Public.isNativeAddress(toToken.address)) {
+      toTokenClone.address = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    }
 
     const ethPrice = await this.coingeckoApiService.getEtherPriceInUsd();
     const gasPrice = await this.web3Public.getGasPriceInETH();
 
+    const params = {
+      sellToken: fromTokenClone.address,
+      buyToken: toTokenClone.address,
+      sellAmount: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
+      slippagePercentage: this.settings.slippageTolerance.toString()
+    };
+
     const trade = await this.fetchTrade(params);
+    this.tradeData = trade;
     const gasFeeInEth = new BigNumber(trade.estimatedGas).multipliedBy(gasPrice);
     const gasFeeInUsd = gasFeeInEth.multipliedBy(ethPrice);
 
     return {
       from: {
-        token: trade.sellTokenAddress,
+        token: fromToken,
         amount: new BigNumber(trade.sellAmount)
       },
       to: {
-        token: trade.buyTokenAddress,
+        token: toToken,
         amount: new BigNumber(trade.buyAmount).div(10 ** toToken.decimals)
       },
       estimatedGas: trade.estimatedGas,
@@ -94,16 +122,24 @@ export class ZrxEthService implements ItProvider {
   }
 
   public getAllowance(tokenAddress: string): Observable<BigNumber> {
-    console.log('get allowance zrx');
-    return Promise.resolve();
+    return this.commonUniswap.getAllowance(
+      tokenAddress,
+      this.tradeData.allowanceTarget,
+      this.web3Public
+    );
   }
 
-  public async approve(provider: INSTANT_TRADES_PROVIDER, trade: InstantTrade): Promise<void> {
-    console.log('approve zrx');
-    return Promise.resolve();
+  public async approve(
+    tokenAddress: string,
+    options: {
+      onTransactionHash?: (hash: string) => void;
+    }
+  ): Promise<void> {
+    await this.commonUniswap.checkSettings(this.blockchain);
+    return this.commonUniswap.approve(tokenAddress, this.tradeData.allowanceTarget, options);
   }
 
   public fetchTrade(params) {
-    return this.http.get('https://kovan.api.0x.org/swap/v1/quote', { params }).toPromise();
+    return this.http.get('https://api.0x.org/swap/v1/quote', { params }).toPromise();
   }
 }

@@ -182,7 +182,7 @@ export class InstantTradeService {
     const providerApproveData = Object.values(
       this.blockchainsProviders[this.currentBlockchain]
     ).map((provider: ItProvider) => provider.getAllowance(fromToken.address));
-
+    console.log(providerApproveData);
     return forkJoin(providerApproveData).pipe(
       map((approveArray: BigNumber[]) => {
         return approveArray.some(el => fromAmount.gt(el));
@@ -191,6 +191,7 @@ export class InstantTradeService {
   }
 
   public async approve(provider: INSTANT_TRADES_PROVIDER, trade: InstantTrade): Promise<void> {
+    console.log(trade);
     try {
       await (this.blockchainsProviders[this.currentBlockchain][provider] as ItProvider).approve(
         trade.from.token.address,

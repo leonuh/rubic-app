@@ -142,7 +142,6 @@ export class Web3Public {
     spenderAddress: string
   ): Promise<BigNumber> {
     const contract = new this.web3.eth.Contract(ERC20_TOKEN_ABI as AbiItem[], tokenAddress);
-
     const allowance = await contract.methods
       .allowance(ownerAddress, spenderAddress)
       .call({ from: ownerAddress });
