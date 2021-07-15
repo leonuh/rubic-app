@@ -18,6 +18,9 @@ import { BLOCKCHAIN_NAME } from '../../../../../../shared/models/blockchain/BLOC
 import { ProviderConnectorService } from '../../../../../../core/services/blockchain/provider-connector/provider-connector.service';
 import { Web3PrivateService } from '../../../../../../core/services/blockchain/web3-private-service/web3-private.service';
 import { CommonUniswapService } from '../common-uniswap/common-uniswap.service';
+import { uniSwapContracts, WETH } from '../uni-swap-service/uni-swap-constants';
+import { UseTestingModeService } from '../../../../../../core/services/use-testing-mode/use-testing-mode.service';
+import { ZRX_API_ADDRESS } from './zrx-eth-constants';
 
 @Injectable({
   providedIn: 'root'
@@ -31,6 +34,8 @@ export class ZrxEthService implements ItProvider {
 
   protected blockchain: BLOCKCHAIN_NAME;
 
+  private apiAddress: string;
+
   constructor(
     private http: HttpClient,
     private readonly settingsService: SettingsService,
@@ -39,10 +44,21 @@ export class ZrxEthService implements ItProvider {
     private readonly providerConnector: ProviderConnectorService,
     private readonly web3PrivateService: Web3PrivateService,
     private readonly commonUniswap: CommonUniswapService,
-    public providerConnectorService: ProviderConnectorService
+    public providerConnectorService: ProviderConnectorService,
+    private readonly useTestingModeService: UseTestingModeService
   ) {
     this.web3Public = this.w3Public[BLOCKCHAIN_NAME.ETHEREUM];
     this.blockchain = BLOCKCHAIN_NAME.ETHEREUM;
+    this.apiAddress = ZRX_API_ADDRESS[BLOCKCHAIN_NAME.ETHEREUM];
+
+    useTestingModeService.isTestingMode.subscribe(value => {
+      if (value) {
+        this.web3Public = w3Public[BLOCKCHAIN_NAME.ETHEREUM_TESTNET];
+        this.blockchain = BLOCKCHAIN_NAME.ETHEREUM_TESTNET;
+        this.apiAddress = ZRX_API_ADDRESS[BLOCKCHAIN_NAME.ETHEREUM_TESTNET];
+      }
+    });
+
     const form = this.settingsService.settingsForm.controls.INSTANT_TRADE;
     this.settings = {
       ...form.value,
@@ -140,6 +156,6 @@ export class ZrxEthService implements ItProvider {
   }
 
   public fetchTrade(params) {
-    return this.http.get('https://api.0x.org/swap/v1/quote', { params }).toPromise();
+    return this.http.get(`${this.apiAddress}swap/v1/quote?`, { params }).toPromise();
   }
 }
