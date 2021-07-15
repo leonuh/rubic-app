@@ -1,12 +1,11 @@
 import { Injectable } from '@angular/core';
 import BigNumber from 'bignumber.js';
 import { TransactionReceipt } from 'web3-eth';
-import { from, Observable } from 'rxjs';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 import { ItProvider } from '../../models/it-provider';
 import InstantTrade from '../../../../models/InstantTrade';
 import InstantTradeToken from '../../../../models/InstantTradeToken';
-import { INSTANT_TRADES_PROVIDER } from '../../../../../../shared/models/instant-trade/INSTANT_TRADES_PROVIDER';
 import { Web3PublicService } from '../../../../../../core/services/blockchain/web3-public-service/web3-public.service';
 import {
   ItSettingsForm,
@@ -18,19 +17,21 @@ import { BLOCKCHAIN_NAME } from '../../../../../../shared/models/blockchain/BLOC
 import { ProviderConnectorService } from '../../../../../../core/services/blockchain/provider-connector/provider-connector.service';
 import { Web3PrivateService } from '../../../../../../core/services/blockchain/web3-private-service/web3-private.service';
 import { CommonUniswapService } from '../common-uniswap/common-uniswap.service';
-import { uniSwapContracts, WETH } from '../uni-swap-service/uni-swap-constants';
 import { UseTestingModeService } from '../../../../../../core/services/use-testing-mode/use-testing-mode.service';
-import { ZRX_API_ADDRESS } from './zrx-eth-constants';
+import { ZRX_API_ADDRESS, ZRX_NATIVE_TOKEN } from './zrx-eth-constants';
+import { SwapFormService } from '../../../../../swaps/services/swaps-form-service/swap-form.service';
+import { ZrxApiResponse } from '../../models/zrx-types';
+import { HttpService } from '../../../../../../core/services/http/http.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ZrxEthService implements ItProvider {
+export class ZrxService implements ItProvider {
   private web3Public: Web3Public;
 
   private settings: ItSettingsForm;
 
-  private tradeData;
+  private tradeData: ZrxApiResponse;
 
   protected blockchain: BLOCKCHAIN_NAME;
 
@@ -45,18 +46,14 @@ export class ZrxEthService implements ItProvider {
     private readonly web3PrivateService: Web3PrivateService,
     private readonly commonUniswap: CommonUniswapService,
     public providerConnectorService: ProviderConnectorService,
-    private readonly useTestingModeService: UseTestingModeService
+    private readonly useTestingModeService: UseTestingModeService,
+    private readonly swapFormService: SwapFormService,
+    private readonly httpService: HttpService
   ) {
-    this.web3Public = this.w3Public[BLOCKCHAIN_NAME.ETHEREUM];
-    this.blockchain = BLOCKCHAIN_NAME.ETHEREUM;
-    this.apiAddress = ZRX_API_ADDRESS[BLOCKCHAIN_NAME.ETHEREUM];
-
-    useTestingModeService.isTestingMode.subscribe(value => {
-      if (value) {
-        this.web3Public = w3Public[BLOCKCHAIN_NAME.ETHEREUM_TESTNET];
-        this.blockchain = BLOCKCHAIN_NAME.ETHEREUM_TESTNET;
-        this.apiAddress = ZRX_API_ADDRESS[BLOCKCHAIN_NAME.ETHEREUM_TESTNET];
-      }
+    this.swapFormService.commonTrade.controls.input.valueChanges.subscribe(({ fromBlockchain }) => {
+      this.web3Public = this.w3Public[fromBlockchain];
+      this.blockchain = BLOCKCHAIN_NAME[fromBlockchain];
+      this.apiAddress = ZRX_API_ADDRESS[fromBlockchain];
     });
 
     const form = this.settingsService.settingsForm.controls.INSTANT_TRADE;
@@ -97,11 +94,11 @@ export class ZrxEthService implements ItProvider {
     const toTokenClone = { ...toToken };
 
     if (this.web3Public.isNativeAddress(fromToken.address)) {
-      fromTokenClone.address = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      fromTokenClone.address = ZRX_NATIVE_TOKEN;
     }
 
     if (this.web3Public.isNativeAddress(toToken.address)) {
-      toTokenClone.address = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      toTokenClone.address = ZRX_NATIVE_TOKEN;
     }
 
     const ethPrice = await this.coingeckoApiService.getEtherPriceInUsd();
@@ -114,21 +111,20 @@ export class ZrxEthService implements ItProvider {
       slippagePercentage: this.settings.slippageTolerance.toString()
     };
 
-    const trade = await this.fetchTrade(params);
-    this.tradeData = trade;
-    const gasFeeInEth = new BigNumber(trade.estimatedGas).multipliedBy(gasPrice);
+    this.tradeData = await this.fetchTrade(params);
+    const gasFeeInEth = new BigNumber(this.tradeData.estimatedGas).multipliedBy(gasPrice);
     const gasFeeInUsd = gasFeeInEth.multipliedBy(ethPrice);
 
     return {
       from: {
         token: fromToken,
-        amount: new BigNumber(trade.sellAmount)
+        amount: new BigNumber(this.tradeData.sellAmount)
       },
       to: {
         token: toToken,
-        amount: new BigNumber(trade.buyAmount).div(10 ** toToken.decimals)
+        amount: new BigNumber(this.tradeData.buyAmount).div(10 ** toToken.decimals)
       },
-      estimatedGas: trade.estimatedGas,
+      estimatedGas: new BigNumber(this.tradeData.estimatedGas),
       gasFeeInUsd,
       gasFeeInEth,
       options: {
@@ -155,7 +151,7 @@ export class ZrxEthService implements ItProvider {
     return this.commonUniswap.approve(tokenAddress, this.tradeData.allowanceTarget, options);
   }
 
-  public fetchTrade(params) {
-    return this.http.get(`${this.apiAddress}swap/v1/quote?`, { params }).toPromise();
+  public fetchTrade(params): Promise<ZrxApiResponse> {
+    return this.httpService.get('swap/v1/quote', params, this.apiAddress).toPromise();
   }
 }

@@ -336,7 +336,6 @@ export class InstantTradeBottomFormComponent implements OnInit, OnDestroy {
   public async approveTrade(): Promise<void> {
     const providerIndex = this.providerControllers.findIndex(el => el.isSelected);
     const provider = this.providerControllers[providerIndex];
-    console.log(provider);
     if (providerIndex !== -1) {
       this.tradeStatus = TRADE_STATUS.APPROVE_IN_PROGRESS;
       this.providerControllers[providerIndex] = {

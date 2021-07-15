@@ -24,7 +24,7 @@ import { TranslateService } from '@ngx-translate/core';
 import TransactionRevertedError from 'src/app/core/errors/models/common/transaction-reverted.error';
 import { SushiSwapPolygonService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-polygon-service/sushi-swap-polygon.service';
 import { SushiSwapEthService } from 'src/app/features/instant-trade/services/instant-trade-service/providers/sushi-swap-eth-service/sushi-swap-eth.service';
-import { ZrxEthService } from './providers/zrx-eth-service/zrx-eth.service';
+import { ZrxService } from './providers/zrx-service/zrx-service';
 
 @Injectable({
   providedIn: 'root'
@@ -46,7 +46,7 @@ export class InstantTradeService {
     private readonly oneInchBscService: OneInchBscService,
     private readonly sushiSwapEthService: SushiSwapEthService,
     private readonly sushiSwapPolygonService: SushiSwapPolygonService,
-    private readonly zrxService: ZrxEthService,
+    private readonly zrxService: ZrxService,
     // Providers end
     private readonly instantTradesApiService: InstantTradesApiService,
     private readonly errorService: ErrorsService,
@@ -182,7 +182,6 @@ export class InstantTradeService {
     const providerApproveData = Object.values(
       this.blockchainsProviders[this.currentBlockchain]
     ).map((provider: ItProvider) => provider.getAllowance(fromToken.address));
-    console.log(providerApproveData);
     return forkJoin(providerApproveData).pipe(
       map((approveArray: BigNumber[]) => {
         return approveArray.some(el => fromAmount.gt(el));
@@ -191,7 +190,6 @@ export class InstantTradeService {
   }
 
   public async approve(provider: INSTANT_TRADES_PROVIDER, trade: InstantTrade): Promise<void> {
-    console.log(trade);
     try {
       await (this.blockchainsProviders[this.currentBlockchain][provider] as ItProvider).approve(
         trade.from.token.address,

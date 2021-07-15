@@ -12,15 +12,9 @@ export class HttpService {
   constructor(private http: HttpClient) {}
 
   public get(url: string, data?: {}, path?: string): Observable<any> {
-    const headers = new HttpHeaders({
-      'Cache-Control': 'max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
-      Pragma: 'no-cache',
-      Expires: '0'
-    });
     data = data || {};
     return this.http.get<any>((path || SERVER_REST_URL) + (url || ''), {
-      params: data,
-      headers
+      params: data
     });
   }
 
