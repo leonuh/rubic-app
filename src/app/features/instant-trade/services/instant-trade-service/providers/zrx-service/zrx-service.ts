@@ -52,9 +52,10 @@ export class ZrxService implements ItProvider {
   ) {
     this.swapFormService.commonTrade.controls.input.controls.fromBlockchain.valueChanges.subscribe(
       fromBlockchain => {
-        this.web3Public = this.w3Public[fromBlockchain];
-        this.blockchain = fromBlockchain;
-        this.apiAddress = ZRX_API_ADDRESS[fromBlockchain];
+        const blockchain = useTestingModeService.isTestingMode ? BLOCKCHAIN_NAME.ETHEREUM_TESTNET : fromBlockchain;
+        this.web3Public = this.w3Public[blockchain];
+        this.blockchain = blockchain;
+        this.apiAddress = ZRX_API_ADDRESS[blockchain];
       }
     );
 
