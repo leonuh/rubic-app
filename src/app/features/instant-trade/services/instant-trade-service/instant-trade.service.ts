@@ -134,19 +134,17 @@ export class InstantTradeService {
           status: TuiNotification.Success
         })
         .subscribe();
-      try {
-        await this.instantTradesApiService.notifyInstantTradesBot({
+      await this.instantTradesApiService
+        .notifyInstantTradesBot({
           provider,
           blockchain: this.currentBlockchain,
           walletAddress: receipt.from,
           trade,
           txHash: receipt.transactionHash
+        })
+        .catch(_err => {
+          throw new CustomError(`Notify Instant Trade bot failed`, false);
         });
-      } catch (err) {
-        const error = new CustomError('Notify Instant Trade bot failed');
-        error.displayError = false;
-        throw error;
-      }
     } catch (err) {
       if (err instanceof TransactionRevertedError) {
         console.error(err);
@@ -170,7 +168,6 @@ export class InstantTradeService {
 
   private updateTrade(hash: string, status: INSTANT_TRADES_TRADE_STATUS) {
     return this.instantTradesApiService.patchTrade(hash, status).subscribe({
-      // tslint:disable-next-line:no-console
       error: err => console.debug('IT patch request is failed', err)
     });
   }

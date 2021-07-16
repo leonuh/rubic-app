@@ -17,13 +17,14 @@ export abstract class RubicError extends Error {
     translateKey?: string,
     message?: string,
     component?: Type<object>,
-    data?: object
+    data?: object,
+    displayError = true
   ) {
     super(message);
     this.translateKey = translateKey;
     this.type = errorType;
     this.component = component;
     this.data = data;
-    this.displayError = true;
+    this.displayError = displayError;
   }
 }
