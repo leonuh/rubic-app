@@ -1,15 +1,15 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
-  Input,
-  Output,
   EventEmitter,
   Inject,
   INJECTOR,
   Injector,
-  ChangeDetectorRef,
+  Input,
+  OnDestroy,
   OnInit,
-  OnDestroy
+  Output
 } from '@angular/core';
 import { PolymorpheusComponent } from '@tinkoff/ng-polymorpheus';
 import { TuiDialogService } from '@taiga-ui/core';
@@ -25,6 +25,9 @@ import { ISwapFormInput } from 'src/app/shared/models/swaps/ISwapForm';
 import { ProviderConnectorService } from 'src/app/core/services/blockchain/provider-connector/provider-connector.service';
 import { UseTestingModeService } from 'src/app/core/services/use-testing-mode/use-testing-mode.service';
 import { TranslateService } from '@ngx-translate/core';
+import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
+import { BridgeService } from 'src/app/features/bridge/services/bridge-service/bridge.service';
+import { WALLET_NAME } from 'src/app/core/header/components/header/components/wallets-modal/models/providers';
 import { TRADE_STATUS } from '../../../models/swaps/TRADE_STATUS';
 
 enum ERROR_TYPE {
@@ -95,9 +98,25 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
     return !!Object.values(ERROR_TYPE).find(key => this.errorType[key]);
   }
 
+  public get allowChangeNetwork(): boolean {
+    const unsupportedItBlockchains = [BLOCKCHAIN_NAME.XDAI, BLOCKCHAIN_NAME.TRON];
+    const form = this.formService.commonTrade.controls.input.value;
+    if (
+      this.providerConnectorService?.providerName !== WALLET_NAME.METAMASK ||
+      !form.fromBlockchain
+    ) {
+      return false;
+    }
+
+    if (form.toBlockchain === form.fromBlockchain) {
+      return !unsupportedItBlockchains.some(el => el === form.fromBlockchain);
+    }
+    return this.bridgeService.isBridgeSupported();
+  }
+
   public get networkErrorText(): void {
     return this.translateService.instant('common.switchTo', {
-      networkName: this.fromToken.blockchain
+      networkName: this.formService.commonTrade.controls.input.value.fromBlockchain
     });
   }
 
@@ -112,6 +131,11 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
     if (this.errorType[ERROR_TYPE.TRON_WALLET_ADDRESS]) {
       return this.translateService.instant('errors.setTronAddress');
     }
+    if (this.errorType[ERROR_TYPE.WRONG_BLOCKCHAIN]) {
+      return this.translateService.instant('errors.chooseNetworkWallet', {
+        blockchain: this.fromToken.blockchain
+      });
+    }
     if (this.errorType[ERROR_TYPE.NOT_SELECTED_PROVIDER]) {
       return this.translateService.instant('errors.noSelectedProvider');
     }
@@ -125,7 +149,8 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
     private readonly useTestingModeService: UseTestingModeService,
     private readonly dialogService: TuiDialogService,
     @Inject(INJECTOR) private readonly injector: Injector,
-    private translateService: TranslateService
+    private translateService: TranslateService,
+    private readonly bridgeService: BridgeService
   ) {
     this.errorType = Object.values(ERROR_TYPE).reduce(
       (acc, key) => ({
@@ -212,6 +237,12 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
   }
 
   public async changeNetwork(): Promise<void> {
-    this.providerConnectorService.switchChain(this.fromToken?.blockchain);
+    const currentStatus = this.status;
+    this.status = TRADE_STATUS.LOADING;
+    try {
+      await this.providerConnectorService.switchChain(this.fromToken?.blockchain);
+    } finally {
+      this.status = currentStatus;
+    }
   }
 }
