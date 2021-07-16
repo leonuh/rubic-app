@@ -37,6 +37,8 @@ export class ZrxService implements ItProvider {
 
   private apiAddress: string;
 
+  private isTestingMode: boolean;
+
   constructor(
     private http: HttpClient,
     private readonly settingsService: SettingsService,
@@ -50,12 +52,24 @@ export class ZrxService implements ItProvider {
     private readonly swapFormService: SwapFormService,
     private readonly httpService: HttpService
   ) {
+    useTestingModeService.isTestingMode.subscribe(value => {
+      if (value) {
+        this.isTestingMode = value;
+      }
+    });
+
     this.swapFormService.commonTrade.controls.input.controls.fromBlockchain.valueChanges.subscribe(
       fromBlockchain => {
-        const blockchain = useTestingModeService.isTestingMode ? BLOCKCHAIN_NAME.ETHEREUM_TESTNET : fromBlockchain;
-        this.web3Public = this.w3Public[blockchain];
-        this.blockchain = blockchain;
-        this.apiAddress = ZRX_API_ADDRESS[blockchain];
+        if (this.isTestingMode) {
+          const blockchain = `${this.blockchain}_TESTNET` as BLOCKCHAIN_NAME;
+          this.blockchain = blockchain;
+          this.web3Public = this.w3Public[blockchain];
+          this.apiAddress = ZRX_API_ADDRESS[blockchain];
+        } else {
+          this.web3Public = this.w3Public[fromBlockchain];
+          this.blockchain = fromBlockchain;
+          this.apiAddress = ZRX_API_ADDRESS[fromBlockchain];
+        }
       }
     );
 
@@ -84,7 +98,8 @@ export class ZrxService implements ItProvider {
       data: this.tradeData.data,
       gas: this.tradeData.gas,
       gasPrice: this.tradeData.gasPrice,
-      value: this.tradeData.value
+      value: this.tradeData.value,
+      onTransactionHash: options.onConfirm
     });
   }
 
@@ -106,12 +121,12 @@ export class ZrxService implements ItProvider {
 
     const ethPrice = await this.coingeckoApiService.getEtherPriceInUsd();
     const gasPrice = await this.web3Public.getGasPriceInETH();
-
     const params = {
       sellToken: fromTokenClone.address,
       buyToken: toTokenClone.address,
       sellAmount: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
       slippagePercentage: this.settings.slippageTolerance.toString()
+      // excludedSources: 'Uniswap'
     };
 
     this.tradeData = await this.fetchTrade(params);

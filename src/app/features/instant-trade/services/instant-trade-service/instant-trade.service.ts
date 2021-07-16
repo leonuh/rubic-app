@@ -116,7 +116,7 @@ export class InstantTradeService {
           }
         }
       );
-      this.modalShowing.unsubscribe();
+      this.modalShowing?.unsubscribe();
       this.updateTrade(receipt.transactionHash, INSTANT_TRADES_TRADE_STATUS.COMPLETED);
       this.notificationsService
         .show(this.translateService.instant('notifications.successfulTradeTitle'), {
@@ -214,7 +214,7 @@ export class InstantTradeService {
           }
         }
       );
-      this.modalShowing.unsubscribe();
+      this.modalShowing?.unsubscribe();
       this.notificationsService
         .show(this.translateService.instant('notifications.successApprove'), {
           status: TuiNotification.Success

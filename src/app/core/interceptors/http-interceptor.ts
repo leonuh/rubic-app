@@ -4,7 +4,7 @@ import {
   HttpInterceptor,
   HttpHandler,
   HttpRequest,
-  HttpXsrfTokenExtractor, HttpHeaders
+  HttpXsrfTokenExtractor,
 } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
