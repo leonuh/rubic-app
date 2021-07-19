@@ -51,6 +51,18 @@ export const INSTANT_TRADE_PROVIDERS = {
       isSelected: false,
       isCollapsed: false,
       needApprove: null
+    },
+    {
+      trade: null,
+      tradeState: INSTANT_TRADES_STATUS.CALCULATION,
+      tradeProviderInfo: {
+        label: '0x',
+        value: INSTANT_TRADES_PROVIDER.ZRX
+      },
+      isBestRate: false,
+      isSelected: false,
+      isCollapsed: false,
+      needApprove: null
     }
   ],
   [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: [
@@ -72,6 +84,18 @@ export const INSTANT_TRADE_PROVIDERS = {
       tradeProviderInfo: {
         label: 'Pancakeswap',
         value: INSTANT_TRADES_PROVIDER.PANCAKESWAP
+      },
+      isBestRate: false,
+      isSelected: false,
+      isCollapsed: false,
+      needApprove: null
+    },
+    {
+      trade: null,
+      tradeState: INSTANT_TRADES_STATUS.CALCULATION,
+      tradeProviderInfo: {
+        label: '0x',
+        value: INSTANT_TRADES_PROVIDER.ZRX
       },
       isBestRate: false,
       isSelected: false,
@@ -122,6 +146,18 @@ export const INSTANT_TRADE_PROVIDERS = {
       tradeProviderInfo: {
         label: 'Sushiswap',
         value: INSTANT_TRADES_PROVIDER.SUSHISWAP
+      },
+      isBestRate: false,
+      isSelected: false,
+      isCollapsed: false,
+      needApprove: null
+    },
+    {
+      trade: null,
+      tradeState: INSTANT_TRADES_STATUS.CALCULATION,
+      tradeProviderInfo: {
+        label: '0x',
+        value: INSTANT_TRADES_PROVIDER.ZRX
       },
       isBestRate: false,
       isSelected: false,
