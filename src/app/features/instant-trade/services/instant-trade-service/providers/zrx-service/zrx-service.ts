@@ -3,25 +3,25 @@ import BigNumber from 'bignumber.js';
 import { TransactionReceipt } from 'web3-eth';
 import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { ItProvider } from '../../models/it-provider';
-import InstantTrade from '../../../../models/InstantTrade';
-import InstantTradeToken from '../../../../models/InstantTradeToken';
-import { Web3PublicService } from '../../../../../../core/services/blockchain/web3-public-service/web3-public.service';
+import { ItProvider } from 'src/app/features/instant-trade/services/instant-trade-service/models/it-provider';
+import { Web3Public } from 'src/app/core/services/blockchain/web3-public-service/Web3Public';
+import { ProviderConnectorService } from 'src/app/core/services/blockchain/provider-connector/provider-connector.service';
+import { Web3PublicService } from 'src/app/core/services/blockchain/web3-public-service/web3-public.service';
+import { Web3PrivateService } from 'src/app/core/services/blockchain/web3-private-service/web3-private.service';
+import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
 import {
   ItSettingsForm,
   SettingsService
-} from '../../../../../swaps/services/settings-service/settings.service';
-import { Web3Public } from '../../../../../../core/services/blockchain/web3-public-service/Web3Public';
-import { CoingeckoApiService } from '../../../../../../core/services/external-api/coingecko-api/coingecko-api.service';
-import { BLOCKCHAIN_NAME } from '../../../../../../shared/models/blockchain/BLOCKCHAIN_NAME';
-import { ProviderConnectorService } from '../../../../../../core/services/blockchain/provider-connector/provider-connector.service';
-import { Web3PrivateService } from '../../../../../../core/services/blockchain/web3-private-service/web3-private.service';
-import { CommonUniswapService } from '../common-uniswap/common-uniswap.service';
-import { UseTestingModeService } from '../../../../../../core/services/use-testing-mode/use-testing-mode.service';
+} from 'src/app/features/swaps/services/settings-service/settings.service';
+import { CoingeckoApiService } from 'src/app/core/services/external-api/coingecko-api/coingecko-api.service';
+import { SwapFormService } from 'src/app/features/swaps/services/swaps-form-service/swap-form.service';
+import { UseTestingModeService } from 'src/app/core/services/use-testing-mode/use-testing-mode.service';
+import { ZrxApiResponse } from 'src/app/features/instant-trade/services/instant-trade-service/models/zrx-types';
+import { HttpService } from 'src/app/core/services/http/http.service';
+import InstantTradeToken from 'src/app/features/instant-trade/models/InstantTradeToken';
+import { CommonUniswapV2Service } from 'src/app/features/instant-trade/services/instant-trade-service/providers/common-uniswap-v2/common-uniswap-v2.service';
+import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import { ZRX_API_ADDRESS, ZRX_NATIVE_TOKEN } from './zrx-eth-constants';
-import { SwapFormService } from '../../../../../swaps/services/swaps-form-service/swap-form.service';
-import { ZrxApiResponse } from '../../models/zrx-types';
-import { HttpService } from '../../../../../../core/services/http/http.service';
 
 @Injectable({
   providedIn: 'root'
@@ -46,7 +46,7 @@ export class ZrxService implements ItProvider {
     private readonly coingeckoApiService: CoingeckoApiService,
     private readonly providerConnector: ProviderConnectorService,
     private readonly web3PrivateService: Web3PrivateService,
-    private readonly commonUniswap: CommonUniswapService,
+    private readonly commonUniswapV2: CommonUniswapV2Service,
     public providerConnectorService: ProviderConnectorService,
     private readonly useTestingModeService: UseTestingModeService,
     private readonly swapFormService: SwapFormService,
@@ -152,7 +152,7 @@ export class ZrxService implements ItProvider {
   }
 
   public getAllowance(tokenAddress: string): Observable<BigNumber> {
-    return this.commonUniswap.getAllowance(
+    return this.commonUniswapV2.getAllowance(
       tokenAddress,
       this.tradeData?.allowanceTarget,
       this.web3Public
@@ -165,8 +165,8 @@ export class ZrxService implements ItProvider {
       onTransactionHash?: (hash: string) => void;
     }
   ): Promise<void> {
-    await this.commonUniswap.checkSettings(this.blockchain);
-    return this.commonUniswap.approve(tokenAddress, this.tradeData.allowanceTarget, options);
+    await this.commonUniswapV2.checkSettings(this.blockchain);
+    return this.commonUniswapV2.approve(tokenAddress, this.tradeData.allowanceTarget, options);
   }
 
   public fetchTrade(params): Promise<ZrxApiResponse> {
