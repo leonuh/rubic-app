@@ -61,7 +61,7 @@ export class ZrxService implements ItProvider {
     this.swapFormService.commonTrade.controls.input.controls.fromBlockchain.valueChanges.subscribe(
       fromBlockchain => {
         if (this.isTestingMode) {
-          const blockchain = `${this.blockchain}_TESTNET` as BLOCKCHAIN_NAME;
+          const blockchain = `${fromBlockchain}_TESTNET` as BLOCKCHAIN_NAME;
           this.blockchain = blockchain;
           this.web3Public = this.w3Public[blockchain];
           this.apiAddress = ZRX_API_ADDRESS[blockchain];
@@ -125,8 +125,8 @@ export class ZrxService implements ItProvider {
       sellToken: fromTokenClone.address,
       buyToken: toTokenClone.address,
       sellAmount: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
-      slippagePercentage: this.settings.slippageTolerance.toString()
-      // excludedSources: 'Uniswap'
+      slippagePercentage: this.settings.slippageTolerance.toString(),
+      excludedSources: 'Uniswap'
     };
 
     this.tradeData = await this.fetchTrade(params);
@@ -154,7 +154,7 @@ export class ZrxService implements ItProvider {
   public getAllowance(tokenAddress: string): Observable<BigNumber> {
     return this.commonUniswap.getAllowance(
       tokenAddress,
-      this.tradeData.allowanceTarget,
+      this.tradeData?.allowanceTarget,
       this.web3Public
     );
   }
