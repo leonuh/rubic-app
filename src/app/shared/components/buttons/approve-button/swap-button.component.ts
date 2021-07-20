@@ -136,7 +136,7 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
     }
     if (this.errorType[ERROR_TYPE.WRONG_BLOCKCHAIN]) {
       return this.translateService.instant('errors.chooseNetworkWallet', {
-        blockchain: this.fromToken.blockchain
+        blockchain: this.fromToken?.blockchain || ''
       });
     }
     if (this.errorType[ERROR_TYPE.NOT_SELECTED_PROVIDER]) {
@@ -172,6 +172,7 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
         this.needLoginLoading = false;
         this.needLogin = !user?.address;
       }
+      this.cdr.detectChanges();
     });
 
     this.useTestingModeSubscription$ = this.useTestingModeService.isTestingMode.subscribe(
