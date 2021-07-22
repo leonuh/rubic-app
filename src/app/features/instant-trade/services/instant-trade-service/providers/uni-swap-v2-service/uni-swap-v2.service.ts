@@ -131,6 +131,7 @@ export class UniSwapV2Service implements ItProvider {
     );
 
     return {
+      blockchain: this.blockchain,
       from: {
         token: fromToken,
         amount: fromAmount
