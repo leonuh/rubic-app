@@ -134,6 +134,7 @@ export class ZrxService implements ItProvider {
     const gasFeeInUsd = gasFeeInEth.multipliedBy(ethPrice);
 
     return {
+      blockchain: BLOCKCHAIN_NAME.ETHEREUM,
       from: {
         token: fromToken,
         amount: new BigNumber(this.tradeData.sellAmount)

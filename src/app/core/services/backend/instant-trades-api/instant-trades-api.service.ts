@@ -12,6 +12,7 @@ import { InstantTradesResponseApi } from 'src/app/core/services/backend/instant-
 import InstantTrade from 'src/app/features/instant-trade/models/InstantTrade';
 import { INSTANT_TRADES_PROVIDER } from 'src/app/shared/models/instant-trade/INSTANT_TRADES_PROVIDER';
 import { InstantTradeBotRequest } from 'src/app/core/services/backend/instant-trades-api/models/InstantTradesBotRequest';
+import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE_TOKEN_ADDRESS';
 import { HttpService } from '../../http/http.service';
 import { BOT_URL } from '../constants/BOT_URL';
 import { Web3PublicService } from '../../blockchain/web3-public-service/web3-public.service';
@@ -25,10 +26,17 @@ const instantTradesApiRoutes = {
   getData: 'instant_trades/'
 };
 
+const ethereumWethAddressWithMode = {
+  mainnet: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+  testnet: '0xd0a1e359811322d97991e03f863a0c30c2cf029c'
+};
+
 @Injectable({
   providedIn: 'root'
 })
 export class InstantTradesApiService {
+  private ethereumWethAddress: string;
+
   private isTestingMode: boolean;
 
   private isIframe: boolean;
@@ -39,7 +47,15 @@ export class InstantTradesApiService {
     private readonly providerConnectorService: ProviderConnectorService,
     private queryParamsService: QueryParamsService
   ) {
-    this.useTestingModeService.isTestingMode.subscribe(res => (this.isTestingMode = res));
+    this.useTestingModeService.isTestingMode.subscribe(isTestingMode => {
+      this.isTestingMode = isTestingMode;
+      if (!isTestingMode) {
+        this.ethereumWethAddress = ethereumWethAddressWithMode.mainnet;
+      } else {
+        this.ethereumWethAddress = ethereumWethAddressWithMode.testnet;
+      }
+    });
+
     this.queryParamsService.isIframe$.subscribe(res => (this.isIframe = res));
   }
 
@@ -88,6 +104,22 @@ export class InstantTradesApiService {
         from_amount: Web3PublicService.amountToWei(trade.from.amount, trade.from.token.decimals),
         to_amount: Web3PublicService.amountToWei(trade.to.amount, trade.to.token.decimals)
       };
+    } else if (provider === INSTANT_TRADES_PROVIDER.UNISWAP_V3) {
+      tradeInfo = {
+        hash,
+        provider,
+        network: TO_BACKEND_BLOCKCHAINS[blockchain],
+        from_token: trade.from.token.address,
+        to_token: trade.to.token.address
+      };
+      if (
+        (trade.from.token.address === NATIVE_TOKEN_ADDRESS &&
+          trade.to.token.address.toLowerCase() === this.ethereumWethAddress) ||
+        (trade.to.token.address === NATIVE_TOKEN_ADDRESS &&
+          trade.from.token.address.toLowerCase() === this.ethereumWethAddress)
+      ) {
+        tradeInfo.provider = INSTANT_TRADES_PROVIDER.WRAPPEDETH;
+      }
     } else {
       tradeInfo = {
         hash,

@@ -162,6 +162,7 @@ export class UniSwapV3Service implements ItProvider {
       const estimatedGas = isEth.from ? ETHtoWETHEstimatedGas : WETHtoETHEstimatedGas;
       const { gasFeeInUsd, gasFeeInEth } = await this.getGasFees(estimatedGas);
       return {
+        blockchain: BLOCKCHAIN_NAME.ETHEREUM,
         from: {
           token: fromToken,
           amount: fromAmount
@@ -186,6 +187,7 @@ export class UniSwapV3Service implements ItProvider {
     );
 
     return {
+      blockchain: BLOCKCHAIN_NAME.ETHEREUM,
       from: {
         token: fromToken,
         amount: fromAmount

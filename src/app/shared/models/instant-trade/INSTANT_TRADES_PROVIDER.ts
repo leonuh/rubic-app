@@ -1,9 +1,10 @@
 export enum INSTANT_TRADES_PROVIDER {
   ONEINCH = 'oneinch',
-  UNISWAP_V2 = 'uniswap v2',
-  UNISWAP_V3 = 'uniswap v3',
+  UNISWAP_V2 = 'uniswap',
+  UNISWAP_V3 = 'uniswap3',
   PANCAKESWAP = 'pancakeswap',
   QUICKSWAP = 'quickswap',
   SUSHISWAP = 'sushiswap',
-  ZRX = 'zrx'
+  ZRX = 'zrx',
+  WRAPPEDETH = 'wrappedeth'
 }

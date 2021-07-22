@@ -73,7 +73,8 @@ export class InstantTradeService {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchEthService,
         [INSTANT_TRADES_PROVIDER.UNISWAP_V2]: this.uniSwapV2Service,
         [INSTANT_TRADES_PROVIDER.UNISWAP_V3]: this.uniSwapV3Service,
-        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapEthService
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapEthService,
+        [INSTANT_TRADES_PROVIDER.ZRX]: this.zrxService
       },
       [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchBscService,
