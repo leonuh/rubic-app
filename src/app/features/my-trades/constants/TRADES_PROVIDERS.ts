@@ -31,7 +31,7 @@ const BRIDGE_PROVIDERS: Record<BRIDGE_PROVIDER, Provider> = {
   }
 };
 
-const INSTANT_TRADES_PROVIDERS: Record<INSTANT_TRADES_PROVIDER, Provider> = {
+const INSTANT_TRADES_PROVIDERS: Partial<Record<INSTANT_TRADES_PROVIDER, Provider>> = {
   [INSTANT_TRADES_PROVIDER.UNISWAP_V3]: {
     name: 'Uniswap V3',
     image: `${imageBasePath}uniswap.svg`
@@ -62,7 +62,7 @@ const INSTANT_TRADES_PROVIDERS: Record<INSTANT_TRADES_PROVIDER, Provider> = {
   }
 };
 
-export const TRADES_PROVIDERS: Record<BRIDGE_PROVIDER | INSTANT_TRADES_PROVIDER, Provider> = {
+export const TRADES_PROVIDERS = {
   ...BRIDGE_PROVIDERS,
   ...INSTANT_TRADES_PROVIDERS
 };
