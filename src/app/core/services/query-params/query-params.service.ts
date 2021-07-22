@@ -207,6 +207,8 @@ export class QueryParamsService {
 
         if (
           fromChain !== toChain &&
+          newParams.from &&
+          newParams.to &&
           !pairs.some(
             (pair: BlockchainsBridgeTokens) =>
               pair.fromBlockchain === fromChain &&
@@ -214,9 +216,9 @@ export class QueryParamsService {
               pair.bridgeTokens.some(
                 bridgeToken =>
                   bridgeToken.blockchainToken[fromChain]?.symbol.toLowerCase() ===
-                    newParams.from.toLowerCase() &&
+                    newParams.from?.toLowerCase() &&
                   bridgeToken.blockchainToken[toChain]?.symbol.toLowerCase() ===
-                    newParams.to.toLowerCase()
+                    newParams.to?.toLowerCase()
               )
           )
         ) {
