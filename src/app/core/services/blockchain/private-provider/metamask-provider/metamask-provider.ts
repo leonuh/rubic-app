@@ -56,7 +56,6 @@ export class MetamaskProvider extends PrivateProvider {
       this.selectedChain = chain;
       if (this.isEnabled) {
         chainChange.next(BlockchainsInfo.getBlockchainById(chain));
-        // tslint:disable-next-line:no-console
         console.info('Chain changed', chain);
       }
     });
@@ -64,7 +63,6 @@ export class MetamaskProvider extends PrivateProvider {
       this.selectedAddress = accounts[0] || null;
       if (this.isEnabled) {
         this.onAddressChanges.next(this.selectedAddress);
-        // tslint:disable-next-line:no-console
         console.info('Selected account changed to', accounts[0]);
       }
       if (!this.selectedAddress) {

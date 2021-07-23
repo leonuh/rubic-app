@@ -194,7 +194,6 @@ export class EthereumPolygonBridgeProviderService extends BlockchainsBridgeProvi
         toEthFee: 0
       };
     } catch (err) {
-      // tslint:disable-next-line:no-console
       console.debug('Error getting polygon tokens:', err, token.rootToken, token.childToken);
       return null;
     }

@@ -81,7 +81,6 @@ export class CommonUniswapV2Service {
 
       return estimatedGas || tokensToTokensEstimatedGas[path.length - 2];
     } catch (e) {
-      // tslint:disable-next-line:no-console
       console.debug(e);
       return tokensToTokensEstimatedGas[path.length - 2];
     }
@@ -116,7 +115,6 @@ export class CommonUniswapV2Service {
       }
       return ethToTokensEstimatedGas[path.length - 2];
     } catch (e) {
-      // tslint:disable-next-line:no-console
       console.debug(e);
       return ethToTokensEstimatedGas[path.length - 2];
     }
@@ -151,7 +149,6 @@ export class CommonUniswapV2Service {
 
       return estimatedGas || tokensToEthEstimatedGas[path.length - 2];
     } catch (e) {
-      // tslint:disable-next-line:no-console
       console.debug(e);
       return tokensToEthEstimatedGas[path.length - 2];
     }
@@ -331,7 +328,6 @@ export class CommonUniswapV2Service {
               });
             })
             .catch(err => {
-              // tslint:disable-next-line:no-console
               console.debug(err);
               reject();
             });
