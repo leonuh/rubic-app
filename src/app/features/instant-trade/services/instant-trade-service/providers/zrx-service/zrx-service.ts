@@ -126,7 +126,7 @@ export class ZrxService implements ItProvider {
       buyToken: toTokenClone.address,
       sellAmount: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
       slippagePercentage: this.settings.slippageTolerance.toString(),
-      excludedSources: 'Uniswap'
+      excludedSources: 'Uniswap_V3'
     };
 
     this.tradeData = await this.fetchTrade(params);
