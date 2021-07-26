@@ -29,6 +29,7 @@ import { TokensService } from 'src/app/core/services/tokens/tokens.service';
 import { UndefinedError } from 'src/app/core/errors/models/undefined.error';
 import { RubicError } from 'src/app/core/errors/models/RubicError';
 import { BinancePolygonBridgeProviderService } from 'src/app/features/bridge/services/bridge-service/blockchains-bridge-provider/binance-polygon-bridge-provider/binance-polygon-bridge-provider.service';
+import { BIG_NUMBER_FORMAT } from 'src/app/shared/constants/formats/BIG_NUMBER_FORMAT';
 import { SwapFormService } from '../../../swaps/services/swaps-form-service/swap-form.service';
 import { BridgeToken } from '../../models/BridgeToken';
 import { BridgeTradeRequest } from '../../models/BridgeTradeRequest';
@@ -292,8 +293,12 @@ export class BridgeService {
 
     const amountInWei = amount.multipliedBy(10 ** decimals);
     if (balance.lt(amountInWei)) {
-      const formattedTokensBalance = balance.div(10 ** decimals).toFixed();
-      throw new InsufficientFundsError(symbol, formattedTokensBalance, amount.toFixed());
+      const formattedTokensBalance = balance.div(10 ** decimals).toFormat(BIG_NUMBER_FORMAT);
+      throw new InsufficientFundsError(
+        symbol,
+        formattedTokensBalance,
+        amount.toFormat(BIG_NUMBER_FORMAT)
+      );
     }
   }
 

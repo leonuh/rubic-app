@@ -101,8 +101,11 @@ export class InstantTradesApiService {
         provider,
         from_token: trade.from.token.address,
         to_token: trade.to.token.address,
-        from_amount: Web3PublicService.amountToWei(trade.from.amount, trade.from.token.decimals),
-        to_amount: Web3PublicService.amountToWei(trade.to.amount, trade.to.token.decimals)
+        from_amount: Web3PublicService.ToWei(
+          trade.from.amount,
+          trade.from.token.decimals
+        ).toFixed(),
+        to_amount: Web3PublicService.ToWei(trade.to.amount, trade.to.token.decimals).toFixed()
       };
     } else if (provider === INSTANT_TRADES_PROVIDER.UNISWAP_V3) {
       tradeInfo = {
@@ -171,7 +174,7 @@ export class InstantTradesApiService {
       return {
         blockchain: FROM_BACKEND_BLOCKCHAINS[token.blockchain_network],
         symbol: token.symbol,
-        amount: Web3PublicService.weiToAmount(amount, token.decimals).toFixed(),
+        amount: Web3PublicService.fromWei(amount, token.decimals).toFixed(),
         image: token.image
       };
     }
@@ -179,6 +182,9 @@ export class InstantTradesApiService {
     let provider = tradeApi.contract.name;
     if (provider === 'pancakeswap_old') {
       provider = INSTANT_TRADES_PROVIDER.PANCAKESWAP;
+    }
+    if (provider === INSTANT_TRADES_PROVIDER.WRAPPEDETH) {
+      provider = INSTANT_TRADES_PROVIDER.UNISWAP_V3;
     }
 
     return {

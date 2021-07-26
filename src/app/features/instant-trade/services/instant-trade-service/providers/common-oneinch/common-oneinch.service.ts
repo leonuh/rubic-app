@@ -22,6 +22,8 @@ import { BlockchainsInfo } from 'src/app/core/services/blockchain/blockchain-inf
 import BigNumber from 'bignumber.js';
 import CustomError from 'src/app/core/errors/models/custom-error';
 import networks from 'src/app/shared/constants/blockchain/networks';
+import { Web3PublicService } from 'src/app/core/services/blockchain/web3-public-service/web3-public.service';
+import { BIG_NUMBER_FORMAT } from 'src/app/shared/constants/formats/BIG_NUMBER_FORMAT';
 
 @Injectable({
   providedIn: 'root'
@@ -94,21 +96,23 @@ export class CommonOneinchService {
         inWei: true
       });
       if (balance.lt(amountIn)) {
-        const formattedBalance = web3.weiToEth(balance);
+        const formattedBalance = Web3PublicService.fromWei(balance).toFormat(BIG_NUMBER_FORMAT);
         throw new InsufficientFundsError(
           trade.from.token.symbol,
           formattedBalance,
-          trade.from.amount.toFixed()
+          trade.from.amount.toFormat(BIG_NUMBER_FORMAT)
         );
       }
     } else {
       const tokensBalance = await web3.getTokenBalance(address, trade.from.token.address);
       if (tokensBalance.lt(amountIn)) {
-        const formattedTokensBalance = tokensBalance.div(10 ** trade.from.token.decimals).toFixed();
+        const formattedTokensBalance = tokensBalance
+          .div(10 ** trade.from.token.decimals)
+          .toFormat(BIG_NUMBER_FORMAT);
         throw new InsufficientFundsError(
           trade.from.token.symbol,
           formattedTokensBalance,
-          trade.from.amount.toFixed()
+          trade.from.amount.toFormat(BIG_NUMBER_FORMAT)
         );
       }
     }

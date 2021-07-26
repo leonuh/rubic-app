@@ -9,6 +9,7 @@ import { BlockTransactionString } from 'web3-eth';
 import InsufficientFundsError from 'src/app/core/errors/models/instant-trade/InsufficientFundsError';
 import { BIG_NUMBER_FORMAT } from 'src/app/shared/constants/formats/BIG_NUMBER_FORMAT';
 import { NATIVE_TOKEN_ADDRESS } from 'src/app/shared/constants/blockchain/NATIVE_TOKEN_ADDRESS';
+import { Web3PublicService } from 'src/app/core/services/blockchain/web3-public-service/web3-public.service';
 import ERC20_TOKEN_ABI from '../constants/erc-20-abi';
 import MULTICALL_ABI from '../constants/multicall-abi';
 import { Call } from '../types/call';
@@ -381,7 +382,7 @@ export class Web3Public {
         inWei: true
       });
       if (balance.lt(amountAbsolute)) {
-        const formattedBalance = this.weiToEth(balance);
+        const formattedBalance = Web3PublicService.fromWei(balance).toFormat(BIG_NUMBER_FORMAT);
         throw new InsufficientFundsError(
           token.symbol,
           formattedBalance,
@@ -391,7 +392,9 @@ export class Web3Public {
     } else {
       const tokensBalance = await this.getTokenBalance(userAddress, token.address);
       if (tokensBalance.lt(amountAbsolute)) {
-        const formattedTokensBalance = tokensBalance.div(10 ** token.decimals).toString();
+        const formattedTokensBalance = tokensBalance
+          .div(10 ** token.decimals)
+          .toFormat(BIG_NUMBER_FORMAT);
         throw new InsufficientFundsError(
           token.symbol,
           formattedTokensBalance,

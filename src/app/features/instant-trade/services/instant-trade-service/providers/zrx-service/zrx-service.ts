@@ -93,7 +93,7 @@ export class ZrxService implements ItProvider {
       onApprove?: (hash: string) => void;
     } = {}
   ): Promise<TransactionReceipt> {
-    const amount = Web3PublicService.weiToAmount(this.tradeData.sellAmount, 18).toString(10);
+    const amount = Web3PublicService.fromWei(this.tradeData.sellAmount, 18);
     return this.web3PrivateService.sendTransaction(this.tradeData.to, amount, {
       data: this.tradeData.data,
       gas: this.tradeData.gas,
@@ -124,7 +124,7 @@ export class ZrxService implements ItProvider {
     const params = {
       sellToken: fromTokenClone.address,
       buyToken: toTokenClone.address,
-      sellAmount: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
+      sellAmount: Web3PublicService.ToWei(fromAmount, fromToken.decimals),
       slippagePercentage: this.settings.slippageTolerance.toString(),
       excludedSources: 'Uniswap_V3'
     };

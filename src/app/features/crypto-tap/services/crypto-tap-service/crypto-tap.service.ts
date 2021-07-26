@@ -29,6 +29,7 @@ import { AccountError } from 'src/app/core/errors/models/provider/AccountError';
 import { NetworkError } from 'src/app/core/errors/models/provider/NetworkError';
 import InsufficientFundsError from 'src/app/core/errors/models/instant-trade/InsufficientFundsError';
 import { UndefinedError } from 'src/app/core/errors/models/undefined.error';
+import { BIG_NUMBER_FORMAT } from 'src/app/shared/constants/formats/BIG_NUMBER_FORMAT';
 
 interface EstimatedAmountResponse {
   from_amount: number;
@@ -98,9 +99,9 @@ export class CryptoTapService {
       .get(`estimate_amount/`, { fsym: fromToken.symbol, tsym: toToken.symbol }, this.baseApiUrl)
       .pipe(
         map((response: EstimatedAmountResponse) => ({
-          fromAmount: Web3PublicService.weiToAmount(response.from_amount, fromToken.decimals),
-          toAmount: Web3PublicService.weiToAmount(response.to_amount, toToken.decimals),
-          fee: Web3PublicService.weiToAmount(response.fee_amount, fromToken.decimals)
+          fromAmount: Web3PublicService.fromWei(response.from_amount, fromToken.decimals),
+          toAmount: Web3PublicService.fromWei(response.to_amount, toToken.decimals),
+          fee: Web3PublicService.fromWei(response.fee_amount, fromToken.decimals)
         }))
       );
   }
@@ -137,8 +138,12 @@ export class CryptoTapService {
         inWei: true
       });
       if (balance.lt(amountInWei)) {
-        const formattedBalance = web3Public.weiToEth(balance);
-        throw new InsufficientFundsError(token.symbol, formattedBalance, fromAmount.toFixed());
+        const formattedBalance = Web3PublicService.fromWei(balance).toFormat(BIG_NUMBER_FORMAT);
+        throw new InsufficientFundsError(
+          token.symbol,
+          formattedBalance,
+          fromAmount.toFormat(BIG_NUMBER_FORMAT)
+        );
       }
     } else {
       const tokensBalance = await web3Public.getTokenBalance(
@@ -146,14 +151,14 @@ export class CryptoTapService {
         token.address
       );
       if (tokensBalance.lt(amountInWei)) {
-        const formattedTokensBalance = Web3PublicService.weiToAmount(
+        const formattedTokensBalance = Web3PublicService.fromWei(
           tokensBalance,
           token.decimals
-        ).toFixed();
+        ).toFormat(BIG_NUMBER_FORMAT);
         throw new InsufficientFundsError(
           token.symbol,
           formattedTokensBalance,
-          fromAmount.toFixed()
+          fromAmount.toFormat(BIG_NUMBER_FORMAT)
         );
       }
     }
@@ -184,7 +189,7 @@ export class CryptoTapService {
             'deposit',
             [toNetwork],
             {
-              value: Web3PublicService.amountToWei(fromAmount, fromToken.decimals),
+              value: Web3PublicService.ToWei(fromAmount, fromToken.decimals),
               onTransactionHash,
               gas: estimatedGas
             }
