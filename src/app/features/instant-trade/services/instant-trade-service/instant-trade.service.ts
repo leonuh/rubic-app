@@ -79,12 +79,14 @@ export class InstantTradeService {
       [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchBscService,
         [INSTANT_TRADES_PROVIDER.PANCAKESWAP]: this.pancakeSwapService,
-        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapBscService
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapBscService,
+        [INSTANT_TRADES_PROVIDER.ZRX]: this.zrxService
       },
       [BLOCKCHAIN_NAME.POLYGON]: {
         [INSTANT_TRADES_PROVIDER.ONEINCH]: this.oneInchPolygonService,
         [INSTANT_TRADES_PROVIDER.QUICKSWAP]: this.quickSwapService,
-        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapPolygonService
+        [INSTANT_TRADES_PROVIDER.SUSHISWAP]: this.sushiSwapPolygonService,
+        [INSTANT_TRADES_PROVIDER.ZRX]: this.zrxService
       }
     };
   }
