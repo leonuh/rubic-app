@@ -101,11 +101,11 @@ export class InstantTradesApiService {
         provider,
         from_token: trade.from.token.address,
         to_token: trade.to.token.address,
-        from_amount: Web3PublicService.ToWei(
+        from_amount: Web3PublicService.toWei(
           trade.from.amount,
           trade.from.token.decimals
         ).toFixed(),
-        to_amount: Web3PublicService.ToWei(trade.to.amount, trade.to.token.decimals).toFixed()
+        to_amount: Web3PublicService.toWei(trade.to.amount, trade.to.token.decimals).toFixed()
       };
     } else if (provider === INSTANT_TRADES_PROVIDER.UNISWAP_V3) {
       tradeInfo = {

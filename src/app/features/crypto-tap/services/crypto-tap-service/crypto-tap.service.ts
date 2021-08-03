@@ -189,7 +189,7 @@ export class CryptoTapService {
             'deposit',
             [toNetwork],
             {
-              value: Web3PublicService.ToWei(fromAmount, fromToken.decimals),
+              value: Web3PublicService.toWei(fromAmount, fromToken.decimals),
               onTransactionHash,
               gas: estimatedGas
             }

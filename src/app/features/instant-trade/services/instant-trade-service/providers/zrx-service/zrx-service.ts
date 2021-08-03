@@ -124,7 +124,7 @@ export class ZrxService implements ItProvider {
     const params = {
       sellToken: fromTokenClone.address,
       buyToken: toTokenClone.address,
-      sellAmount: Web3PublicService.ToWei(fromAmount, fromToken.decimals),
+      sellAmount: Web3PublicService.toWei(fromAmount, fromToken.decimals),
       slippagePercentage: this.settings.slippageTolerance.toString(),
       excludedSources: 'Uniswap_V3'
     };

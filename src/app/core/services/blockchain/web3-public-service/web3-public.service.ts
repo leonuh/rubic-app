@@ -15,7 +15,7 @@ import { UseTestingModeService } from '../../use-testing-mode/use-testing-mode.s
 export class Web3PublicService {
   private readonly connectionLinks: ConnectionLink[];
 
-  static ToWei(amount: BigNumber | string | number, decimals = 18): BigNumber {
+  static toWei(amount: BigNumber | string | number, decimals = 18): BigNumber {
     return new BigNumber(amount || '0').times(new BigNumber(10).pow(decimals));
   }
 
